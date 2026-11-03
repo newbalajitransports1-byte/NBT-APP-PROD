@@ -9,20 +9,17 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Linking,
   FlatList,
   Platform,
   Image,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { COLORS, SPACING, SHADOWS } from '../theme';
 import nbtAuthorisedSignatureBase64 from '../nbtSignatureBase64';
 import nbtLogoBase64 from '../nbtLogoBase64';
-import nbtBalajiBase64 from '../nbtBalajiBase64';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import { db, GcNote, GcItem } from '../db/database';
 
@@ -54,11 +51,14 @@ export default function GcScreen() {
   const [bankIfsc, setBankIfsc] = useState('KVBL0001187');
   const [bankName, setBankName] = useState('Karur Vysya Bank');
   const [bankBranch, setBankBranch] = useState('Salem - 636 002');
-  const [addressLine1, setAddressLine1] = useState('3/131, V.K.V. Complex, 1st Floor, Bangalore Bye Pass Road,');
-  const [addressLine2, setAddressLine2] = useState('Kandampatty (Po.), Salem - 636 005. (TN)');
+  const [addressLine1, setAddressLine1] = useState('3/131, V.K.V. Complex, 1st Floor,');
+  const [addressLine2, setAddressLine2] = useState('Bangalore Bye Pass Road, Kandampatty (Po.), Salem - 636 005 (TN)');
   const [phone1, setPhone1] = useState('94433 51789');
   const [phone2, setPhone2] = useState('93622 51789');
   const [phone3, setPhone3] = useState('97892 71721');
+  const [email, setEmail] = useState('newbalajitransports1@gmail.com');
+  const [website, setWebsite] = useState('www.newbalajitransport.com');
+  const [valueRs, setValueRs] = useState('');
   const [items, setItems] = useState<Array<{ articlesCount: string; description: string; weight: string; value: string }>>(
     Array.from({ length: 6 }, () => ({ articlesCount: '', description: '', weight: '', value: '' }))
   );
@@ -192,12 +192,10 @@ export default function GcScreen() {
     if (dateString.includes('-')) {
       const parts = dateString.split('-');
       if (parts[0].length === 4) {
-        // YYYY-MM-DD
         year = Number(parts[0]);
         month = Number(parts[1]);
         day = Number(parts[2]);
       } else {
-        // DD-MM-YYYY
         year = Number(parts[2]);
         month = Number(parts[1]);
         day = Number(parts[0]);
@@ -205,12 +203,10 @@ export default function GcScreen() {
     } else if (dateString.includes('/')) {
       const parts = dateString.split('/');
       if (parts[0].length === 4) {
-        // YYYY/MM/DD
         year = Number(parts[0]);
         month = Number(parts[1]);
         day = Number(parts[2]);
       } else {
-        // DD/MM/YYYY
         year = Number(parts[2]);
         month = Number(parts[1]);
         day = Number(parts[0]);
@@ -275,9 +271,19 @@ export default function GcScreen() {
     ? itemsTotalNumericValue.toFixed(2)
     : (itemsNonNumericValues.length > 0 ? itemsNonNumericValues.join(', ') : '');
 
-  const formatRupeeValue = (value: number | string) => {
-    const amount = typeof value === 'string' ? Number(value) || 0 : value;
-    const [rs, ps] = amount.toFixed(2).split('.');
+  const formatRupeeParts = (value: number | string | undefined) => {
+    if (value === undefined || value === null || value === '') return { rs: '', ps: '' };
+    const num = Number(value);
+    if (isNaN(num) || num === 0) return { rs: '', ps: '' };
+    const [rs, ps] = num.toFixed(2).split('.');
+    return { rs, ps };
+  };
+
+  const formatRequiredRupeeParts = (value: number | string | undefined) => {
+    if (value === undefined || value === null || value === '') return { rs: '0', ps: '00' };
+    const num = Number(value);
+    if (isNaN(num)) return { rs: '0', ps: '00' };
+    const [rs, ps] = num.toFixed(2).split('.');
     return { rs, ps };
   };
 
@@ -290,6 +296,10 @@ export default function GcScreen() {
         weight: item.weight.trim(),
         value: item.value.trim(),
       }));
+
+    if (filledItems.length > 0 && valueRs.trim() && !filledItems[0].value) {
+      filledItems[0].value = valueRs.trim();
+    }
 
     return {
       id: noteNumber.trim() || 'NBT_GC',
@@ -313,6 +323,7 @@ export default function GcScreen() {
       lessAdvance: advValue,
       balance: balanceDue,
       payableAt: payableAt.trim(),
+      valueRs: valueRs.trim(),
       paymentType,
       taxPayee,
       deliveryAt: deliveryAt.trim(),
@@ -369,6 +380,7 @@ export default function GcScreen() {
     setSgstPercent(0);
     setIgstPercent(0);
     setPayableAt('');
+    setValueRs('');
     setPaymentType('');
     setTaxPayee('Consignor');
     setDeliveryAt('Door Delivery');
@@ -381,11 +393,13 @@ export default function GcScreen() {
     setBankIfsc('KVBL0001187');
     setBankName('Karur Vysya Bank');
     setBankBranch('Salem - 636 002');
-    setAddressLine1('3/131, V.K.V. Complex, 1st Floor, Bangalore Bye Pass Road,');
-    setAddressLine2('Kandampatty (Po.), Salem - 636 005. (TN)');
+    setAddressLine1('3/131, V.K.V. Complex, 1st Floor,');
+    setAddressLine2('Bangalore Bye Pass Road, Kandampatty (Po.), Salem - 636 005 (TN)');
     setPhone1('94433 51789');
     setPhone2('93622 51789');
     setPhone3('97892 71721');
+    setEmail('newbalajitransports1@gmail.com');
+    setWebsite('www.newbalajitransport.com');
     setBankDetails('');
     setTerms('');
   };
@@ -399,6 +413,10 @@ export default function GcScreen() {
         weight: item.weight.trim(),
         value: item.value.trim(),
       }));
+
+    if (filledItems.length > 0 && valueRs.trim() && !filledItems[0].value) {
+      filledItems[0].value = valueRs.trim();
+    }
 
     const missing: string[] = [];
     if (!from.trim()) missing.push('Route From');
@@ -437,6 +455,7 @@ export default function GcScreen() {
         lessAdvance: advValue,
         balance: balanceDue,
         payableAt: payableAt.trim(),
+        valueRs: valueRs.trim(),
         paymentType,
         taxPayee,
         deliveryAt: deliveryAt.trim(),
@@ -455,6 +474,8 @@ export default function GcScreen() {
         phone1: phone1.trim(),
         phone2: phone2.trim(),
         phone3: phone3.trim(),
+        email: email.trim(),
+        website: website.trim(),
         bankDetails: bankDetails.trim(),
         terms: terms.trim(),
       };
@@ -502,83 +523,79 @@ export default function GcScreen() {
           await fetchGcNotes();
           setActiveTab('ARCHIVE');
         } else {
-          const err = res.error || 'Failed to create consignment note.';
+          const err = res.error || 'Failed to save consignment note.';
           showConfirmDialog('Save Error', err, undefined, 'danger', 'OK');
         }
       }
-    } catch (e) {
-      showConfirmDialog('Connection Error', 'Connection to backend failed.', undefined, 'danger', 'OK');
+    } catch (e: any) {
+      showConfirmDialog('System Error', e?.message || 'Unexpected error occurred while saving note.', undefined, 'danger', 'OK');
     } finally {
       setLoading(false);
     }
   };
 
   const openWebGcPrintPreview = async (html: string) => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      try {
+    if (typeof window === 'undefined') return;
+    try {
+      if (Platform.OS !== 'web') {
         await Print.printAsync({ html });
-      } catch (error) {
-        console.warn('Web print fallback failed', error);
-        Alert.alert('Print failed', 'Unable to open the GC print preview.');
+        return;
       }
-      return false;
-    }
 
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        window.alert('Pop-up blocked. Please enable pop-ups to print GC Note.');
+        return;
+      }
 
-    const checkReady = window.setInterval(() => {
-      if (printWindow.document.readyState === 'complete') {
-        window.clearInterval(checkReady);
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+
+      setTimeout(() => {
         try {
           printWindow.focus();
           printWindow.print();
-        } catch (error) {
-          console.warn('GC print window failed', error);
-        }
-      }
-    }, 100);
-
-    return true;
-  };
-
-  const downloadWebGcAsPdf = (html: string, filename: string) => {
-    if (typeof window === 'undefined') return;
-
-    // 1. Direct file download of formatted GC Note (HTML format, printable & savable as PDF)
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${filename}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-
-    // 2. Open print/save-to-PDF window synchronously without popup blockage
-    const printWin = window.open('', '_blank');
-    if (printWin) {
-      printWin.document.open();
-      printWin.document.write(html);
-      printWin.document.title = filename;
-      printWin.document.close();
-      printWin.focus();
-      setTimeout(() => {
-        try {
-          printWin.print();
         } catch (e) {
-          console.warn('Print preview error:', e);
+          console.warn('Auto-print dialog trigger failed:', e);
         }
-      }, 400);
+      }, 500);
+    } catch (err) {
+      console.error('Error opening print preview:', err);
     }
   };
 
+  const downloadWebGcAsPdf = (html: string, filename: string) => {
+    if (typeof window === 'undefined' || Platform.OS !== 'web') return;
+    try {
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${filename}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      const printWin = window.open('', '_blank');
+      if (printWin) {
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => {
+          try {
+            printWin.focus();
+            printWin.print();
+          } catch (_) { }
+        }, 350);
+      }
+    } catch (e) {
+      console.warn('Web direct download fallback:', e);
+    }
+  };
+
+  // Build Highway Design 3 HTML for Printing & PDF Generation
   const buildGcHtml = (note: GcNote) => {
     const safeNum = (val: any): number => {
       if (val === undefined || val === null || val === '') return 0;
@@ -588,7 +605,7 @@ export default function GcScreen() {
 
     const safeItems = Array.isArray(note.items) ? note.items : [];
 
-    const itemRows = Array.from({ length: 6 }).map((_, idx) => {
+    const itemRows = Array.from({ length: 7 }).map((_, idx) => {
       const item = safeItems[idx] || { articlesCount: '', description: '', weight: '', value: '' };
       const rawVal = item.value !== undefined && item.value !== null ? String(item.value).trim() : '';
       const numVal = Number(rawVal);
@@ -599,10 +616,9 @@ export default function GcScreen() {
 
       return `
         <tr>
-          <td style="width: 16%; text-align: center;">${countStr}</td>
-          <td style="width: 50%; text-align: left; padding-left: 8px;">${item.description || ''}</td>
-          <td style="width: 17%; text-align: right; padding-right: 8px;">${wtStr}</td>
-          <td style="width: 17%; text-align: ${isNum ? 'right' : 'center'}; padding-right: 8px;">${valStr}</td>
+          <td class="col-articles">${countStr}</td>
+          <td class="col-desc">${item.description || ''}</td>
+          <td class="col-weight">${wtStr}</td>
         </tr>
       `;
     }).join('');
@@ -610,16 +626,30 @@ export default function GcScreen() {
     const numericValues = safeItems.map(item => Number(item?.value)).filter(n => !isNaN(n) && n > 0);
     const sumNumericValue = numericValues.reduce((sum, n) => sum + n, 0);
     const nonNumericValues = safeItems.map(item => String(item?.value || '').trim()).filter(s => s !== '' && isNaN(Number(s)));
-    const totalValueDisplay = sumNumericValue > 0
-      ? sumNumericValue.toFixed(2)
-      : (nonNumericValues.length > 0 ? nonNumericValues.join(', ') : '');
+    const totalValueDisplay = (note as any).valueRs !== undefined && String((note as any).valueRs).trim() !== ''
+      ? String((note as any).valueRs)
+      : (sumNumericValue > 0
+          ? sumNumericValue.toFixed(2)
+          : (nonNumericValues.length > 0 ? nonNumericValues.join(', ') : ''));
+
     const taxPayeeLower = (note.taxPayee || (note as any).gstPayee || '').toLowerCase();
     const paymentTypeUpper = (note.paymentType || '').toUpperCase();
 
     const fVal = safeNum(note.freight);
-    const cgstP = fVal > 0 && safeNum(note.cgst) > 0 ? `(${((safeNum(note.cgst) / fVal) * 100).toFixed(1).replace(/\.0$/, '')}%)` : '';
-    const sgstP = fVal > 0 && safeNum(note.sgst) > 0 ? `(${((safeNum(note.sgst) / fVal) * 100).toFixed(1).replace(/\.0$/, '')}%)` : '';
-    const igstP = fVal > 0 && safeNum(note.igst) > 0 ? `(${((safeNum(note.igst) / fVal) * 100).toFixed(1).replace(/\.0$/, '')}%)` : '';
+    const cgstVal = safeNum(note.cgst);
+    const sgstVal = safeNum(note.sgst);
+    const igstVal = safeNum(note.igst);
+    const totalVal = safeNum(note.total);
+    const advVal = safeNum(note.lessAdvance);
+    const balVal = safeNum(note.balance);
+
+    const fParts = formatRupeeParts(fVal);
+    const cgstParts = formatRupeeParts(cgstVal);
+    const sgstParts = formatRupeeParts(sgstVal);
+    const igstParts = formatRupeeParts(igstVal);
+    const totalParts = formatRequiredRupeeParts(totalVal);
+    const advParts = formatRupeeParts(advVal);
+    const balParts = formatRequiredRupeeParts(balVal);
 
     return `
       <!DOCTYPE html>
@@ -631,7 +661,7 @@ export default function GcScreen() {
         <style>
           @page {
             size: A4 landscape;
-            margin: 5mm;
+            margin: 6mm 8mm;
           }
           * {
             box-sizing: border-box;
@@ -649,400 +679,473 @@ export default function GcScreen() {
           }
           .page {
             width: 100%;
-            max-width: 287mm;
-            min-height: 198mm;
+            max-width: 282mm;
+            min-height: 196mm;
             margin: 0 auto;
-            padding: 4mm;
+            padding: 4mm 6mm;
             background: #ffffff;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
           }
-          .frame {
-            border: 2.5px solid #0f172a;
-            padding: 8px;
-            background: #ffffff;
-          }
-          .header {
+          
+          /* Header Banner: Deep Blue #0a3a72 matching PDF */
+          .header-container {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            gap: 10px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #0f172a;
+            align-items: center;
+            background: #0a3a72;
+            padding: 8px 18px;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            min-height: 88px;
+            box-sizing: border-box;
           }
           .header-left {
             display: flex;
             align-items: center;
-            gap: 10px;
-            width: 175px;
+            gap: 14px;
+            position: relative;
+            z-index: 2;
           }
-          .logo-mark {
+          .logo-img {
             width: 76px;
             height: 76px;
-            border: 2.5px solid #0f172a;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 26px;
-            font-weight: 900;
-            letter-spacing: 1px;
-            color: #0f172a;
+            object-fit: contain;
+            display: block;
+            flex-shrink: 0;
           }
-          .header-title {
-            flex: 1;
-            text-align: center;
-          }
-          .top-name {
-            font-size: 11px;
-            font-weight: 700;
-            margin-bottom: 2px;
-            letter-spacing: 0.5px;
-          }
-          .main-title {
-            font-size: 32px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            margin: 0;
-            line-height: 1.1;
-            color: #0f172a;
-          }
-          .subtitle {
-            font-size: 11px;
-            font-weight: 700;
-            margin: 4px 0 0;
-            color: #334155;
-          }
-          .badge {
-            display: inline-block;
-            margin-top: 6px;
-            background: #0f172a;
-            color: #ffffff;
-            padding: 4px 14px;
-            border-radius: 4px;
-            font-size: 10.5px;
-            font-weight: 800;
-            letter-spacing: 0.8px;
-          }
-          .header-right {
-            width: 255px;
-            align-self: flex-start;
-            border: 1.5px solid #0f172a;
-            border-radius: 6px;
-            padding: 6px 8px;
-            font-size: 10px;
-          }
-          .header-right p {
-            margin: 0;
-            line-height: 1.35;
-            font-weight: 600;
-          }
-          .phone-list {
-            margin-top: 5px;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 1.4;
-          }
-          .fields-grid {
-            margin-top: 6px;
-            border: 1.5px solid #0f172a;
-          }
-          .grid-row {
-            display: flex;
-            border-bottom: 1px solid #0f172a;
-          }
-          .grid-row:last-child {
-            border-bottom: none;
-          }
-          .field-block {
-            border-right: 1px solid #0f172a;
-            padding: 4px 6px;
-            min-height: 32px;
+          .brand-text {
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
           }
-          .field-block:last-child {
-            border-right: none;
+          .brand-title {
+            font-size: 25px;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+            margin: 0;
+          }
+          .brand-subtitle {
+            font-size: 11px;
+            font-weight: 600;
+            color: #a8c6ed;
+            margin-top: 3px;
+          }
+
+          /* Center Highway Diagonal Slashes */
+          .header-center-slashes {
+            position: absolute;
+            left: 56%;
+            top: 0;
+            bottom: 0;
+            width: 80px;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1;
+          }
+          .slash-gold {
+            position: absolute;
+            left: 10px;
+            top: -20px;
+            width: 28px;
+            height: 140px;
+            background: #f2a800;
+            transform: skewX(-24deg);
+          }
+          .slash-white {
+            position: absolute;
+            left: 48px;
+            top: -20px;
+            width: 6px;
+            height: 140px;
+            background: #ffffff;
+            transform: skewX(-24deg);
+          }
+
+          /* Header Right Contact Block */
+          .header-right {
+            display: flex;
+            align-items: flex-end;
+            position: relative;
+            text-align: right;
+            z-index: 2;
+          }
+          .address-block {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-size: 8.5px;
+            line-height: 1.35;
+            color: #ffffff;
+            font-weight: 500;
+          }
+          .address-line {
+            color: #ffffff;
+          }
+          .phone-numbers {
+            font-size: 11px;
+            font-weight: 800;
+            color: #f2a800;
+            margin-top: 3px;
+            letter-spacing: 0.3px;
+          }
+          .contact-email, .contact-web {
+            font-size: 8.5px;
+            font-weight: 500;
+            color: #a8c6ed;
+            margin-top: 1px;
+          }
+
+          /* Pill Banner */
+          .pill-banner-container {
+            margin: 8px 0 10px 0;
+          }
+          .pill-banner {
+            display: inline-block;
+            background-color: #f2a800;
+            color: #0a3a72;
+            font-size: 11.5px;
+            font-weight: 900;
+            letter-spacing: 0.6px;
+            padding: 5px 22px;
+            border-radius: 9999px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+          }
+
+          /* Dotted Underline Info Fields */
+          .fields-section {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin-bottom: 10px;
+          }
+          .field-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+          }
+          .field-item {
+            display: flex;
+            align-items: baseline;
+            border-bottom: 1px dotted #93c5fd;
+            padding-bottom: 2px;
           }
           .field-label {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 800;
-            text-transform: uppercase;
-            color: #475569;
-            margin-bottom: 2px;
+            color: #0b2c6d;
+            margin-right: 6px;
+            white-space: nowrap;
           }
           .field-value {
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 700;
             color: #0f172a;
-            word-break: break-word;
-          }
-          .table-container {
-            display: flex;
-            border: 1.5px solid #0f172a;
-            margin-top: 6px;
-            gap: 0;
-          }
-          .table-left {
             flex: 1;
+            min-height: 14px;
+          }
+          .field-value-red {
+            color: #b91c1c;
+            font-weight: 800;
+          }
+
+          /* Main Body Grid: Items Table + Amount Box */
+          .main-grid {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            margin-bottom: 6px;
+          }
+          .items-table-wrapper {
+            flex: 1;
+            border: 1.5px solid #2563eb;
+            border-right: none;
             display: flex;
             flex-direction: column;
-            border-right: 1.5px solid #0f172a;
           }
           .items-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 10.5px;
+            height: 100%;
           }
           .items-table th {
-            background: #0f172a;
-            color: #ffffff;
+            border-bottom: 1.5px solid #2563eb;
+            border-right: 1.5px solid #2563eb;
+            padding: 5px 6px;
             font-size: 10px;
             font-weight: 800;
-            padding: 5px 4px;
-            border-right: 1px solid #334155;
+            color: #0b2c6d;
+            background: #ffffff;
             text-align: center;
           }
           .items-table th:last-child {
             border-right: none;
           }
           .items-table td {
-            border-bottom: 1px solid #0f172a;
-            border-right: 1px solid #0f172a;
-            padding: 4px;
-            height: 22px;
+            border-bottom: 1px solid #bfdbfe;
+            border-right: 1.5px solid #2563eb;
+            padding: 4px 6px;
+            height: 20px;
             font-size: 10.5px;
             font-weight: 600;
           }
           .items-table td:last-child {
             border-right: none;
           }
-          .table-footer-label {
-            font-weight: 800;
+          .col-articles {
+            width: 14%;
+            text-align: center;
+          }
+          .col-desc {
+            width: 68%;
+            text-align: left;
+            padding-left: 8px !important;
+          }
+          .col-weight {
+            width: 18%;
             text-align: right;
             padding-right: 8px !important;
-            background: #f8fafc;
-            border-bottom: none !important;
           }
-          .table-footer-value {
+
+          /* Amount Panel */
+          .amount-panel {
+            width: 250px;
+            border: 1.5px solid #2563eb;
+            border-collapse: collapse;
+          }
+          .amount-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+          }
+          .amount-th-row {
+            background-color: #0b2c6d;
+            color: #ffffff;
+          }
+          .amount-th {
+            padding: 5px 6px;
+            font-size: 10px;
             font-weight: 800;
-            text-align: right;
-            padding-right: 8px !important;
-            background: #f8fafc;
-            border-bottom: none !important;
+            border-right: 1px solid #1e3a8a;
           }
-          .bank-box {
-            border-top: 1.5px solid #0f172a;
-            padding: 6px 8px;
-            background: #f8fafc;
+          .amount-th:last-child {
+            border-right: none;
+          }
+          .amount-tr {
+            border-bottom: 1px solid #bfdbfe;
+          }
+          .amount-tr:last-child {
+            border-bottom: none;
+          }
+          .amount-label-cell {
+            padding: 3.5px 8px;
+            font-weight: 700;
+            color: #0b2c6d;
+            width: 52%;
+            border-right: 1.5px solid #2563eb;
+          }
+          .amount-rs-cell {
+            padding: 3.5px 6px;
+            text-align: right;
+            font-weight: 700;
+            width: 32%;
+            border-right: 1.5px solid #2563eb;
+          }
+          .amount-ps-cell {
+            padding: 3.5px 4px;
+            text-align: center;
+            font-weight: 700;
+            width: 16%;
+          }
+
+          /* Below Table Row: Value Rs. & Payment & GST */
+          .subtable-section {
+            margin-top: 4px;
+            margin-bottom: 6px;
+          }
+          .value-row {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            border-bottom: 1px dotted #93c5fd;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
+          }
+          .value-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: #0b2c6d;
+          }
+          .value-text {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0f172a;
             flex: 1;
           }
-          .bank-box-title {
-            font-size: 9.5px;
-            font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 4px;
-            letter-spacing: 0.5px;
+          .payment-type-boxes {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #0b2c6d;
+            margin-left: 20px;
           }
-          .bank-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2px 10px;
+          .checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+          }
+          .box-icon {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1.5px solid #0b2c6d;
+            text-align: center;
+            line-height: 11px;
+            font-size: 9px;
+            font-weight: 900;
+          }
+
+          .gst-tax-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+          }
+          .gst-tax-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
             font-size: 10px;
-            line-height: 1.35;
+            font-weight: 700;
+            color: #0b2c6d;
+          }
+          .for-company-right {
+            font-size: 12px;
+            font-weight: 900;
+            color: #0b2c6d;
+            letter-spacing: 0.3px;
+            margin-right: 10px;
+          }
+
+          /* Bank & GST Details Card */
+          .bank-gst-card {
+            display: flex;
+            background: #edf5fd;
+            border: 1.5px solid #3b82f6;
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin-top: 6px;
+            margin-bottom: 6px;
+            align-items: center;
+          }
+          .bank-col {
+            flex: 1.3;
+            font-size: 10px;
+            line-height: 1.4;
+          }
+          .bank-col-title {
+            font-weight: 800;
+            color: #0b2c6d;
+            margin-bottom: 2px;
           }
           .bank-row {
             display: flex;
-            gap: 4px;
+            gap: 6px;
+            color: #334155;
           }
           .bank-row strong {
-            color: #334155;
-            min-width: 65px;
-          }
-          .amount-panel {
-            width: 250px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-          }
-          .amount-box {
-            border-bottom: 1.5px solid #0f172a;
-          }
-          .amount-header-row {
-            display: flex;
-            background: #0f172a;
-            color: #ffffff;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 5px 8px;
-          }
-          .amount-header-title {
-            flex: 1.3;
-          }
-          .amount-header-rs {
-            flex: 1;
-            text-align: right;
-          }
-          .amount-row {
-            display: flex;
-            align-items: center;
-            border-bottom: 1px solid #cbd5e1;
-            padding: 3.5px 8px;
-            font-size: 10.5px;
-          }
-          .amount-row:last-child {
-            border-bottom: none;
-          }
-          .amount-label {
-            flex: 1.3;
-            font-weight: 700;
-            color: #1e293b;
-          }
-          .amount-val-col {
-            flex: 1;
-            text-align: right;
-            font-weight: 800;
             color: #0f172a;
           }
-          .highlight-row {
-            background: #f1f5f9;
+          .card-divider {
+            width: 1.5px;
+            background-color: #93c5fd;
+            height: 48px;
+            margin: 0 16px;
+          }
+          .gst-col {
+            flex: 1;
+            font-size: 11px;
+            line-height: 1.5;
+          }
+          .gst-row {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+          }
+          .gst-row-label {
             font-weight: 800;
-            border-top: 1px solid #0f172a;
-            border-bottom: 1px solid #0f172a;
+            color: #0b2c6d;
+            min-width: 60px;
           }
-          .balance-row {
-            background: #e2e8f0;
-            font-weight: 900;
-            border-top: 1px solid #0f172a;
-          }
-          .payable-row {
-            background: #f8fafc;
-            border-top: 1px solid #0f172a;
-            font-size: 10px;
-          }
-          .gst-box {
-            padding: 6px 8px;
-            font-size: 10px;
-            background: #ffffff;
-          }
-          .gst-title {
-            font-size: 9.5px;
+          .gst-row-value {
             font-weight: 800;
-            margin-bottom: 4px;
-            color: #0f172a;
+            color: #0b2c6d;
             letter-spacing: 0.5px;
           }
-          .gst-checkboxes {
+
+          /* Legal Text */
+          .legal-disclaimer {
+            font-size: 9px;
+            color: #475569;
+            font-weight: 600;
+            margin: 4px 0 6px 0;
+          }
+
+          /* Signatures Row */
+          .signatures-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 4px;
+            align-items: baseline;
+            gap: 16px;
+            margin-top: 4px;
+            margin-bottom: 6px;
           }
-          .gst-item {
+          .sig-item {
             display: flex;
-            align-items: center;
-            gap: 3px;
-            font-size: 9.5px;
-            font-weight: 700;
+            align-items: baseline;
+            border-bottom: 1px dotted #93c5fd;
+            padding-bottom: 2px;
+            flex: 1;
           }
-          .box-check {
-            display: inline-flex;
+          .sig-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #0b2c6d;
+            margin-right: 6px;
+            white-space: nowrap;
+          }
+          .sig-value {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #0f172a;
+            flex: 1;
+          }
+
+          /* Highway Bottom Bar */
+          .highway-bottom-bar {
+            width: 100%;
+            height: 14px;
+            background-color: #0b2c6d;
+            margin-top: 6px;
+            display: flex;
             align-items: center;
             justify-content: center;
-            width: 12px;
-            height: 12px;
-            border: 1.5px solid #0f172a;
-            font-size: 10px;
-            font-weight: 900;
-            line-height: 1;
-            background: #ffffff;
-            color: #0f172a;
+            overflow: hidden;
+            border-radius: 2px;
           }
-          .gst-meta-row {
-            font-size: 9.5px;
-            line-height: 1.35;
-            margin-top: 2px;
+          .highway-dashes {
+            width: 100%;
+            height: 3.5px;
+            background-image: repeating-linear-gradient(to right, #f59e0b 0, #f59e0b 18px, transparent 18px, transparent 32px);
           }
-          .footer-note {
-            margin-top: 6px;
-            border-top: 1.5px solid #0f172a;
-            padding-top: 5px;
-            font-size: 10px;
-            line-height: 1.35;
-          }
-          .terms-text {
-            margin-top: 3px;
-            font-size: 9px;
-            color: #334155;
-          }
-          .footer-note-secondary {
-            margin-top: 3px;
-            font-size: 8.5px;
-            line-height: 1.25;
-            color: #475569;
-          }
-          .bottom-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-top: 6px;
-            gap: 10px;
-          }
-          .signature-row {
-            flex: 1;
-            display: flex;
-            gap: 6px;
-          }
-          .signature-box {
-            flex: 1;
-            border: 1px solid #0f172a;
-            border-radius: 4px;
-            padding: 4px 6px;
-            min-height: 52px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-          }
-          .signature-label {
-            font-size: 8.5px;
-            font-weight: 800;
-            color: #475569;
-          }
-          .signature-line {
-            border-top: 1px dashed #94a3b8;
-            margin: 2px 0;
-          }
-          .signature-val {
-            font-size: 10px;
-            font-weight: 700;
-            color: #0f172a;
-            min-height: 14px;
-          }
-          .authorise-row {
-            width: 220px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            border: 1px solid #0f172a;
-            border-radius: 4px;
-            padding: 4px;
-            background: #f8fafc;
-          }
-          .authorise-text {
-            font-size: 9.5px;
-            font-weight: 800;
-            color: #0f172a;
-          }
-          .authorise-signature {
-            max-height: 38px;
-            width: auto;
-            display: block;
-            margin: 2px auto;
-          }
-          .authorise-label {
-            font-size: 9px;
-            font-weight: 700;
-            color: #475569;
-          }
+
           @media print {
             body {
               background: #ffffff;
@@ -1052,222 +1155,256 @@ export default function GcScreen() {
               max-width: none !important;
               margin: 0 !important;
               padding: 0 !important;
-            }
-            .frame {
-              border-width: 2px;
-              padding: 6px;
+              min-height: auto;
             }
           }
         </style>
       </head>
       <body>
         <div class="page">
-          <div class="frame">
-            <div class="header">
+          <!-- Top Area: Header & Branding -->
+          <div>
+            <div class="header-container">
               <div class="header-left">
-                ${nbtLogoBase64 ? `<img src="${nbtLogoBase64}" style="width: 76px; height: 76px; object-fit: contain;" />` : `<div class="logo-mark">NBT</div>`}
-                <img src="${nbtBalajiBase64}" style="width: 76px; height: 76px; object-fit: contain; filter: grayscale(1) contrast(1.4) brightness(0.9);" />
+                ${nbtLogoBase64 ? `<img src="${nbtLogoBase64}" class="logo-img" alt="NBT Logo" />` : ''}
+                <div class="brand-text">
+                  <div class="brand-title">NEW BALAJI TRANSPORTS</div>
+                  <div class="brand-subtitle">Lorry Suppliers & Commission Agent</div>
+                </div>
               </div>
-              <div class="header-title">
-                <div class="top-name">Sri Ramajayam</div>
-                <div class="main-title">NEW BALAJI TRANSPORTS</div>
-                <div class="subtitle">(LORRY SUPPLIERS & COMMISSION AGENT)</div>
-                <div class="badge">GOODS CONSIGNMENT / CONSIGNEE COPY</div>
+
+              <!-- Center Highway Slanted Slashes -->
+              <div class="header-center-slashes">
+                <div class="slash-gold"></div>
+                <div class="slash-white"></div>
               </div>
+
               <div class="header-right">
-                <p>${note.addressLine1 || '3/131, V.K.V.Complex, 1st Floor,'}<br />${note.addressLine2 || 'Bangalore Bye Pass Road, Kandampatty (Po.), Salem - 636 005. (TN)'}</p>
-                <div class="phone-list">
-                  <div>☎ ${note.phone1 || '94433 51789'}</div>
-                  <div>☎ ${note.phone2 || '93622 51789'}</div>
-                  <div>☎ ${note.phone3 || '97892 71721'}</div>
+                <div class="address-block">
+                  <div class="address-line">${note.addressLine1 || '3/131, V.K.V. Complex, 1st Floor,'}</div>
+                  <div class="address-line">${note.addressLine2 || 'Bangalore Bye Pass Road, Kandampatty (Po.), Salem - 636 005 (TN)'}</div>
+                  <div class="phone-numbers">${note.phone1 || '94433 51789'} | ${note.phone2 || '93622 51789'} | ${note.phone3 || '97892 71721'}</div>
+                  <div class="contact-email">${email || 'newbalajitransports1@gmail.com'}</div>
+                  <div class="contact-web">${website || 'www.newbalajitransport.com'}</div>
                 </div>
               </div>
             </div>
 
-            <div class="fields-grid">
-              <div class="grid-row">
-                <div class="field-block" style="flex: 1.2;">
-                  <div class="field-label">From</div>
-                  <div class="field-value">${note.from || ''}</div>
+            <!-- Pill Banner -->
+            <div class="pill-banner-container">
+              <div class="pill-banner">GOODS CONSIGNMENT / CONSIGNEE COPY</div>
+            </div>
+
+            <!-- Fields Section (Dotted Underline) -->
+            <div class="fields-section">
+              <div class="field-row">
+                <div class="field-item" style="flex: 1.1;">
+                  <span class="field-label">G.C. Note No. :</span>
+                  <span class="field-value field-value-red">${note.noteNumber || note.id || ''}</span>
                 </div>
-                <div class="field-block" style="flex: 1;">
-                  <div class="field-label">Truck No.</div>
-                  <div class="field-value">${note.truckNumber || ''}</div>
+                <div class="field-item" style="flex: 1.1;">
+                  <span class="field-label">Truck No. :</span>
+                  <span class="field-value">${note.truckNumber || ''}</span>
                 </div>
-                <div class="field-block" style="flex: 1.1;">
-                  <div class="field-label">G.C. Note No.</div>
-                  <div class="field-value" style="font-weight: 800; color: #b91c1c;">${note.noteNumber || note.id || ''}</div>
-                </div>
-              </div>
-              <div class="grid-row">
-                <div class="field-block" style="flex: 1.2;">
-                  <div class="field-label">To</div>
-                  <div class="field-value">${note.to || ''}</div>
-                </div>
-                <div class="field-block" style="flex: 1;">
-                  <div class="field-label">Date</div>
-                  <div class="field-value">${note.date || ''}</div>
-                </div>
-                <div class="field-block" style="flex: 1.1;">
-                  <div class="field-label">As Per Bill No.</div>
-                  <div class="field-value">${note.billNumber || ''}</div>
+                <div class="field-item" style="flex: 0.9;">
+                  <span class="field-label">Date :</span>
+                  <span class="field-value">${note.date || ''}</span>
                 </div>
               </div>
-              <div class="grid-row">
-                <div class="field-block" style="flex: 1.5;">
-                  <div class="field-label">Consignor M/s.</div>
-                  <div class="field-value">${note.consignor || ''}</div>
+
+              <div class="field-row">
+                <div class="field-item" style="flex: 1;">
+                  <span class="field-label">From :</span>
+                  <span class="field-value">${note.from || ''}</span>
                 </div>
-                <div class="field-block" style="flex: 1.5;">
-                  <div class="field-label">Consignee M/s.</div>
-                  <div class="field-value">${note.consignee || ''}</div>
+                <div class="field-item" style="flex: 1;">
+                  <span class="field-label">To :</span>
+                  <span class="field-value">${note.to || ''}</span>
                 </div>
               </div>
-              <div class="grid-row">
-                <div class="field-block" style="flex: 1.1;">
-                  <div class="field-label">Consignor GSTIN</div>
-                  <div class="field-value">${note.consignorGst || ''}</div>
+
+              <div class="field-row">
+                <div class="field-item" style="flex: 1.5;">
+                  <span class="field-label">Consignor M/s.</span>
+                  <span class="field-value">${note.consignor || ''}</span>
                 </div>
-                <div class="field-block" style="flex: 1.1;">
-                  <div class="field-label">Consignee GSTIN</div>
-                  <div class="field-value">${note.consigneeGst || ''}</div>
+                <div class="field-item" style="flex: 1;">
+                  <span class="field-label">GSTIN :</span>
+                  <span class="field-value">${note.consignorGst || ''}</span>
                 </div>
-                <div class="field-block" style="flex: 1;">
-                  <div class="field-label">PAN No.</div>
-                  <div class="field-value">${note.pan || ''}</div>
+              </div>
+
+              <div class="field-row">
+                <div class="field-item" style="flex: 1.5;">
+                  <span class="field-label">Consignee M/s.</span>
+                  <span class="field-value">${note.consignee || ''}</span>
+                </div>
+                <div class="field-item" style="flex: 1;">
+                  <span class="field-label">GSTIN :</span>
+                  <span class="field-value">${note.consigneeGst || ''}</span>
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field-item" style="flex: 1.2;">
+                  <span class="field-label">AS PER BILL NO.</span>
+                  <span class="field-value">${note.billNumber || ''}</span>
+                </div>
+                <div class="field-item" style="flex: 1;">
+                  <span class="field-label">Delivery at :</span>
+                  <span class="field-value">${note.deliveryAt || 'Door Delivery'}</span>
                 </div>
               </div>
             </div>
 
-            <div class="table-container">
-              <div class="table-left">
+            <!-- Main Items Table + Amount Box -->
+            <div class="main-grid">
+              <div class="items-table-wrapper">
                 <table class="items-table">
                   <thead>
                     <tr>
-                      <th style="width: 16%;">No. of Articles</th>
-                      <th style="width: 50%;">Description of Goods<br /><span style="font-size:8.5px; font-weight:normal;">(Said to Contain)</span></th>
-                      <th style="width: 17%;">Weight</th>
-                      <th style="width: 17%;">Value (Rs.)</th>
+                      <th class="col-articles">No. of<br />Articles</th>
+                      <th class="col-desc">Description of Goods<br /><span style="font-weight: 500; font-size: 8.5px;">(Said to Contain)</span></th>
+                      <th class="col-weight">Weight</th>
                     </tr>
                   </thead>
                   <tbody>
                     ${itemRows}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colspan="3" class="table-footer-label">Value Rs.</td>
-                      <td class="table-footer-value">${totalValueDisplay}</td>
-                    </tr>
-                  </tfoot>
                 </table>
-                
-                <div class="bank-box">
-                  <div class="bank-box-title">BANK DETAILS</div>
-                  <div class="bank-grid">
-                    <div class="bank-row"><strong>A/C Name:</strong> <span>${note.bankAccountName || 'New Balaji Transports'}</span></div>
-                    <div class="bank-row"><strong>A/C No.:</strong> <span>${note.bankAccountNumber || '1187115000014102'}</span></div>
-                    <div class="bank-row"><strong>IFSC Code:</strong> <span>${note.bankIfsc || 'KVBL0001187'}</span></div>
-                    <div class="bank-row"><strong>Bank:</strong> <span>${note.bankName || 'Karur Vysya Bank'}</span></div>
-                    <div class="bank-row" style="grid-column: span 2;"><strong>Branch:</strong> <span>${note.bankBranch || 'Salem - 636 002'}</span></div>
-                  </div>
-                </div>
               </div>
 
               <div class="amount-panel">
-                <div class="amount-box">
-                  <div class="amount-header-row">
-                    <div class="amount-header-title">AMOUNT</div>
-                    <div class="amount-header-rs">Rs. &nbsp;&nbsp;&nbsp; Ps.</div>
-                  </div>
-                  <div class="amount-row">
-                    <div class="amount-label">Freight Amount</div>
-                    <div class="amount-val-col">${safeNum(note.freight) > 0 ? safeNum(note.freight).toFixed(2) : '0.00'}</div>
-                  </div>
-                  <div class="amount-row">
-                    <div class="amount-label">CGST ${cgstP}</div>
-                    <div class="amount-val-col">${safeNum(note.cgst) > 0 ? safeNum(note.cgst).toFixed(2) : '0.00'}</div>
-                  </div>
-                  <div class="amount-row">
-                    <div class="amount-label">SGST ${sgstP}</div>
-                    <div class="amount-val-col">${safeNum(note.sgst) > 0 ? safeNum(note.sgst).toFixed(2) : '0.00'}</div>
-                  </div>
-                  <div class="amount-row">
-                    <div class="amount-label">IGST ${igstP}</div>
-                    <div class="amount-val-col">${safeNum(note.igst) > 0 ? safeNum(note.igst).toFixed(2) : '0.00'}</div>
-                  </div>
-                  <div class="amount-row highlight-row">
-                    <div class="amount-label">TOTAL AMOUNT</div>
-                    <div class="amount-val-col">${safeNum(note.total) > 0 ? safeNum(note.total).toFixed(2) : '0.00'}</div>
-                  </div>
-                  <div class="amount-row">
-                    <div class="amount-label">Less Advance</div>
-                    <div class="amount-val-col">${safeNum(note.lessAdvance) > 0 ? safeNum(note.lessAdvance).toFixed(2) : '0.00'}</div>
-                  </div>
-                  <div class="amount-row balance-row">
-                    <div class="amount-label">BALANCE DUE</div>
-                    <div class="amount-val-col">${safeNum(note.balance).toFixed(2)}</div>
-                  </div>
-                  <div class="amount-row payable-row">
-                    <div class="amount-label">Payable At</div>
-                    <div class="amount-val-col" style="font-weight: 700;">${note.payableAt || ''}</div>
-                  </div>
-                </div>
+                <table class="amount-table">
+                  <thead>
+                    <tr class="amount-th-row">
+                      <th class="amount-th" style="text-align: left; padding-left: 8px;">AMOUNT</th>
+                      <th class="amount-th" style="text-align: center; width: 32%;">Rs.</th>
+                      <th class="amount-th" style="text-align: center; width: 16%;">Ps.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="amount-tr">
+                      <td class="amount-label-cell">Freight</td>
+                      <td class="amount-rs-cell">${fParts.rs}</td>
+                      <td class="amount-ps-cell">${fParts.ps}</td>
+                    </tr>
+                    <tr class="amount-tr">
+                      <td class="amount-label-cell">CGST</td>
+                      <td class="amount-rs-cell">${cgstParts.rs}</td>
+                      <td class="amount-ps-cell">${cgstParts.ps}</td>
+                    </tr>
+                    <tr class="amount-tr">
+                      <td class="amount-label-cell">SGST</td>
+                      <td class="amount-rs-cell">${sgstParts.rs}</td>
+                      <td class="amount-ps-cell">${sgstParts.ps}</td>
+                    </tr>
+                    <tr class="amount-tr">
+                      <td class="amount-label-cell">IGST</td>
+                      <td class="amount-rs-cell">${igstParts.rs}</td>
+                      <td class="amount-ps-cell">${igstParts.ps}</td>
+                    </tr>
+                    <tr class="amount-tr" style="background: #f8fafc; font-weight: 800;">
+                      <td class="amount-label-cell">Total</td>
+                      <td class="amount-rs-cell">${totalParts.rs}</td>
+                      <td class="amount-ps-cell">${totalParts.ps}</td>
+                    </tr>
+                    <tr class="amount-tr">
+                      <td class="amount-label-cell">Less Advance</td>
+                      <td class="amount-rs-cell">${advParts.rs}</td>
+                      <td class="amount-ps-cell">${advParts.ps}</td>
+                    </tr>
+                    <tr class="amount-tr" style="background: #f1f5f9; font-weight: 900;">
+                      <td class="amount-label-cell">Balance</td>
+                      <td class="amount-rs-cell">${balParts.rs}</td>
+                      <td class="amount-ps-cell">${balParts.ps}</td>
+                    </tr>
+                    <tr class="amount-tr">
+                      <td class="amount-label-cell">Payable at</td>
+                      <td colspan="2" style="padding: 3px 6px; font-weight: 700; color: #0b2c6d; text-align: center;">${note.payableAt || ''}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                <div class="gst-box">
-                  <div class="gst-title">GST TAX PAY</div>
-                  <div class="gst-checkboxes">
-                    <div class="gst-item"><span class="box-check">${taxPayeeLower === 'transport' ? '✓' : ''}</span> Transport</div>
-                    <div class="gst-item"><span class="box-check">${taxPayeeLower === 'consignor' ? '✓' : ''}</span> Consignor</div>
-                    <div class="gst-item"><span class="box-check">${taxPayeeLower === 'consignee' ? '✓' : ''}</span> Consignee</div>
-                  </div>
-                  <div class="gst-meta-row"><strong>GSTIN:</strong> ${note.gstinNumber || '33AMTPR8487P2ZM'}</div>
-                  <div class="gst-meta-row"><strong>PAN No.:</strong> ${note.pan || 'AMTPR8487P'}</div>
-                  <div class="gst-meta-row"><strong>Delivery At:</strong> ${note.deliveryAt || 'Door Delivery'}</div>
+            <!-- Value Rs. & Payment Type Checkboxes -->
+            <div class="subtable-section">
+              <div class="value-row">
+                <span class="value-label">Value Rs.</span>
+                <span class="value-text">${totalValueDisplay}</span>
+                <div class="payment-type-boxes">
+                  <span class="checkbox-label"><span class="box-icon">${paymentTypeUpper === 'TBB' ? '✓' : ''}</span> TBB</span>
+                  <span class="checkbox-label"><span class="box-icon">${paymentTypeUpper === 'TO_PAY' ? '✓' : ''}</span> TO PAY</span>
+                  <span class="checkbox-label"><span class="box-icon">${paymentTypeUpper === 'PAID' ? '✓' : ''}</span> PAID</span>
+                  <span>Rs. &nbsp;&nbsp; ${totalParts.rs}</span>
+                </div>
+              </div>
+
+              <!-- GST Tax Pay Checkboxes & Company Signature Title -->
+              <div class="gst-tax-row">
+                <div class="gst-tax-left">
+                  <span style="font-weight: 800;">GST TAX PAY :</span>
+                  <span class="checkbox-label"><span class="box-icon">${taxPayeeLower === 'transport' ? '✓' : ''}</span> Transport</span>
+                  <span class="checkbox-label"><span class="box-icon">${taxPayeeLower === 'consignor' ? '✓' : ''}</span> Consignor</span>
+                  <span class="checkbox-label"><span class="box-icon">${taxPayeeLower === 'consignee' ? '✓' : ''}</span> Consignee</span>
+                </div>
+                <div class="for-company-right">
+                  For NEW BALAJI TRANSPORTS
                 </div>
               </div>
             </div>
 
-            <div class="footer-note">
-              <strong>PAYMENT TYPE:</strong>&nbsp;&nbsp;&nbsp;&nbsp;
-              <span class="box-check">${paymentTypeUpper === 'TBB' ? '✓' : ''}</span> TBB&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              <span class="box-check">${paymentTypeUpper === 'TO_PAY' ? '✓' : ''}</span> TO PAY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              <span class="box-check">${paymentTypeUpper === 'PAID' ? '✓' : ''}</span> PAID
-              <div class="terms-text">These Goods are Booked at Owners risk and Insured by Consignor / Consignee. Subject to Salem Jurisdiction only.</div>
-            </div>
-            <div class="footer-note-secondary">
-              Certified that the service provided is by a Goods Transport Agency (GTA). GST on this service is payable by the Recipient (Consignee) under Reverse Charge Mechanism (RCM) pursuant to Notification No. 13/2017-Central Tax (Rate), and no tax has been charged by the transporter.
-            </div>
-
-            <div class="bottom-bar">
-              <div class="signature-row">
-                <div class="signature-box">
-                  <div class="signature-label">DRIVER'S NAME</div>
-                  <div class="signature-line"></div>
-                  <div class="signature-val">${note.driverName || ''}</div>
+            <!-- Bank Details & GST Box -->
+            <div class="bank-gst-card">
+              <div class="bank-col">
+                <div class="bank-col-title">New Balaji Transports - ${note.bankName || 'Karur Vysya Bank'}</div>
+                <div class="bank-row"><span>C/Account No.</span> : <strong>${note.bankAccountNumber || '1187115000014102'}</strong></div>
+                <div class="bank-row"><span>IFSC Code</span> : <strong>${note.bankIfsc || 'KVBL0001187'}</strong></div>
+                <div class="bank-row"><span>Branch</span> : <strong>${note.bankBranch || 'Salem - 636 002'}</strong></div>
+              </div>
+              <div class="card-divider"></div>
+              <div class="gst-col">
+                <div class="gst-row">
+                  <span class="gst-row-label">GSTIN</span>
+                  <span class="gst-row-value">${note.gstinNumber || '33AMTPR8487P2ZM'}</span>
                 </div>
-                <div class="signature-box">
-                  <div class="signature-label">DRIVER'S SIGNATURE</div>
-                  <div class="signature-line"></div>
-                  <div class="signature-val">${note.driverSignature || ''}</div>
-                </div>
-                <div class="signature-box">
-                  <div class="signature-label">DL. No.</div>
-                  <div class="signature-line"></div>
-                  <div class="signature-val">${note.dlNumber || ''}</div>
-                </div>
-                <div class="signature-box">
-                  <div class="signature-label">LORRY OWNER</div>
-                  <div class="signature-line"></div>
-                  <div class="signature-val">${note.lorryOwner || ''}</div>
+                <div class="gst-row">
+                  <span class="gst-row-label">PAN No.</span>
+                  <span class="gst-row-value">${note.pan || 'AMTPR8487P'}</span>
                 </div>
               </div>
+            </div>
 
-              <div class="authorise-row">
-                <div class="authorise-text">For NEW BALAJI TRANSPORTS</div>
-                <img class="authorise-signature" src="${nbtAuthorisedSignatureBase64}" alt="Authorised Signature" />
-                <div class="authorise-label">Authorised Signatory</div>
+            <!-- Disclaimer -->
+            <div class="legal-disclaimer">
+              These Goods are Booked at Owners risk and Insured by Consignor / Consignee. Subject to Salem Jurisdiction only.
+            </div>
+
+            <!-- Driver & Lorry Owner Signatures Row -->
+            <div class="signatures-row">
+              <div class="sig-item">
+                <span class="sig-label">Driver's Signature :</span>
+                <span class="sig-value">${note.driverSignature || ''}</span>
+              </div>
+              <div class="sig-item">
+                <span class="sig-label">Driver's Name :</span>
+                <span class="sig-value">${note.driverName || ''}</span>
+              </div>
+              <div class="sig-item">
+                <span class="sig-label">DL No. :</span>
+                <span class="sig-value">${note.dlNumber || ''}</span>
+              </div>
+              <div class="sig-item">
+                <span class="sig-label">Lorry Owner :</span>
+                <span class="sig-value">${note.lorryOwner || ''}</span>
               </div>
             </div>
+          </div>
+
+          <!-- Bottom Highway Decoration Strip -->
+          <div class="highway-bottom-bar">
+            <div class="highway-dashes"></div>
           </div>
         </div>
       </body>
@@ -1275,14 +1412,11 @@ export default function GcScreen() {
     `;
   };
 
-  const handlePrintPDF = async (gcId: string, note?: GcNote) => {
-    const gcNote = note || notes.find((item) => item.id === gcId);
-    if (!gcNote) {
-      Alert.alert('Error', 'Cannot locate the GC note for printing.');
-      return;
-    }
-
+  const handlePrintPDF = async (id: string, note?: GcNote) => {
     try {
+      const gcNote = note || notes.find((n) => n.id === id);
+      if (!gcNote) return;
+
       const html = buildGcHtml(gcNote);
       if (Platform.OS === 'web') {
         await openWebGcPrintPreview(html);
@@ -1290,45 +1424,43 @@ export default function GcScreen() {
       }
 
       const { uri } = await Print.printToFileAsync({ html });
-      if (!uri) {
-        throw new Error('PDF generation failed');
-      }
-
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+        await Sharing.shareAsync(uri);
       } else {
-        Alert.alert('PDF Ready', `PDF file is available at ${uri}`);
+        await Print.printAsync({ uri });
       }
-    } catch (error) {
-      console.error('Print error:', error);
-      Alert.alert('Error', 'Unable to generate or open the PDF.');
+    } catch (e) {
+      console.error('Error generating print output:', e);
+      Alert.alert('Error', 'Failed to generate print layout.');
     }
   };
 
-  const handleDownloadPDF = async (gcId: string, note?: GcNote) => {
-    const gcNote = note || notes.find((item) => item.id === gcId);
-    if (!gcNote) {
-      Alert.alert('Error', 'Cannot locate the GC note.');
-      return;
-    }
+  const handleDownloadPDF = async (id: string, note?: GcNote) => {
     try {
+      const gcNote = note || notes.find((n) => n.id === id);
+      if (!gcNote) return;
+
+      const filename = `GC_${gcNote.noteNumber || gcNote.id}_${gcNote.date || 'note'}`.replace(/[\/\\?%*:|"<>]/g, '_');
       const html = buildGcHtml(gcNote);
-      const filename = `GC_${gcNote.noteNumber || gcNote.id}_${gcNote.date}`;
+
       if (Platform.OS === 'web') {
         downloadWebGcAsPdf(html, filename);
         return;
       }
+
       const { uri } = await Print.printToFileAsync({ html });
-      if (!uri) throw new Error('PDF generation failed');
-      const pdfFilename = `${filename}.pdf`;
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: pdfFilename });
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Download GC Note ${gcNote.noteNumber || gcNote.id}`,
+          UTI: 'com.adobe.pdf',
+        });
       } else {
-        Alert.alert('PDF Ready', `Saved at ${uri}`);
+        Alert.alert('Download Ready', `File saved temporarily at: ${uri}`);
       }
-    } catch (error) {
-      console.error('Download error:', error);
-      Alert.alert('Error', 'Unable to generate the PDF.');
+    } catch (e) {
+      console.error('Error downloading PDF:', e);
+      Alert.alert('Error', 'Failed to download PDF.');
     }
   };
 
@@ -1373,6 +1505,10 @@ export default function GcScreen() {
     setTaxOption(n.cgst > 0 || n.sgst > 0 ? 'CGST_SGST' : n.igst > 0 ? 'IGST' : 'NONE');
 
     setPayableAt(n.payableAt || '');
+    const editVal = (n as any).valueRs !== undefined && (n as any).valueRs !== null && String((n as any).valueRs).trim() !== ''
+      ? String((n as any).valueRs)
+      : (rawItems.find(it => it.value && String(it.value).trim() !== '')?.value ? String(rawItems.find(it => it.value && String(it.value).trim() !== '')!.value) : '');
+    setValueRs(editVal);
     setPaymentType(((n.paymentType as any) || '') as any);
     setTaxPayee(((n.taxPayee || (n as any).gstPayee || 'Consignor') as any));
     setDeliveryAt(n.deliveryAt || 'Door Delivery');
@@ -1385,11 +1521,13 @@ export default function GcScreen() {
     setBankIfsc(n.bankIfsc || 'KVBL0001187');
     setBankName(n.bankName || 'Karur Vysya Bank');
     setBankBranch(n.bankBranch || 'Salem - 636 002');
-    setAddressLine1(n.addressLine1 || '3/131, V.K.V. Complex, 1st Floor, Bangalore Bye Pass Road,');
-    setAddressLine2(n.addressLine2 || 'Kandampatty (Po.), Salem - 636 005. (TN)');
+    setAddressLine1(n.addressLine1 || '3/131, V.K.V. Complex, 1st Floor,');
+    setAddressLine2(n.addressLine2 || 'Bangalore Bye Pass Road, Kandampatty (Po.), Salem - 636 005 (TN)');
     setPhone1(n.phone1 || '94433 51789');
     setPhone2(n.phone2 || '93622 51789');
     setPhone3(n.phone3 || '97892 71721');
+    setEmail((n as any).email || 'newbalajitransports1@gmail.com');
+    setWebsite((n as any).website || 'www.newbalajitransport.com');
     setBankDetails(n.bankDetails || '');
     setTerms(n.terms || '');
 
@@ -1427,6 +1565,10 @@ export default function GcScreen() {
     setNoteNumber(n.id);
     setBillNumber((n as any).billNumber || '');
     setGstinNumber((n as any).gstinNumber || '');
+    const dupVal = (n as any).valueRs !== undefined && (n as any).valueRs !== null && String((n as any).valueRs).trim() !== ''
+      ? String((n as any).valueRs)
+      : (n.items?.find(it => it.value && String(it.value).trim() !== '')?.value ? String(n.items.find(it => it.value && String(it.value).trim() !== '')!.value) : '');
+    setValueRs(dupVal);
     setPaymentType((n as any).paymentType || '');
     setTaxPayee((n as any).taxPayee || (n as any).gstPayee || 'Consignor');
     setDeliveryAt(n.deliveryAt);
@@ -1445,6 +1587,8 @@ export default function GcScreen() {
     setPhone1((n as any).phone1 || phone1);
     setPhone2((n as any).phone2 || phone2);
     setPhone3((n as any).phone3 || phone3);
+    setEmail((n as any).email || email);
+    setWebsite((n as any).website || website);
     setBankDetails(n.bankDetails);
 
     setActiveTab('CREATE');
@@ -1471,7 +1615,6 @@ export default function GcScreen() {
     }
   };
 
-  // Get unique months from noteNumber (format: JUL-26-01 → JUL-26)
   const getMonthsFromNotes = (noteList: GcNote[]) => {
     const months = new Set<string>();
     noteList.forEach(n => {
@@ -1486,7 +1629,6 @@ export default function GcScreen() {
 
   const activeMonths = getMonthsFromNotes(notes);
 
-  // Filter notes based on selected month and search query
   const filteredNotes = notes.filter(n => {
     const num = n.noteNumber || n.id;
     const parts = num.split('-');
@@ -1503,7 +1645,6 @@ export default function GcScreen() {
     return matchesMonth && matchesQuery;
   });
 
-  // Calculate monthly summary aggregates
   const totalFreight = filteredNotes.reduce((sum, n) => sum + n.freight, 0);
   const totalGst = filteredNotes.reduce((sum, n) => sum + n.cgst + n.sgst + n.igst, 0);
   const totalWeight = filteredNotes.reduce((sum, n) => {
@@ -1550,333 +1691,463 @@ export default function GcScreen() {
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* Design 3 Highway Consignment Sheet */}
             <View style={[styles.gcPage, !isDesktop && { padding: 10, borderRadius: 8 }]}>
-              <View style={[styles.gcHeader, !isDesktop && { flexDirection: 'column', alignItems: 'center', gap: 16 }]}>
-                <View style={[styles.gcHeaderBrand, !isDesktop && { borderRightWidth: 0, paddingRight: 0, alignItems: 'center' }]}>
-                  <View style={styles.logoCircle}>
-                    <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
-                  </View>
-                  <Text style={styles.brandTitle}>NEW BALAJI TRANSPORTS</Text>
-                  <Text style={styles.brandSubtitle}>(LORRY SUPPLIERS & COMMISSION AGENT)</Text>
-                </View>
-                <View style={[styles.gcHeaderTitle, !isDesktop && { minWidth: '100%', alignItems: 'center', marginVertical: 12 }]}>
-                  <Text style={styles.gcHeaderTitleTop}>Sri Ramajayam</Text>
-                  <Text style={[styles.gcHeaderMain, !isDesktop && { fontSize: 22, letterSpacing: 1 }]}>NEW BALAJI TRANSPORTS</Text>
-                  <Text style={styles.gcHeaderSub}>(LORRY SUPPLIERS & COMMISSION AGENT)</Text>
-                  <View style={styles.gcBadge}>
-                    <Text style={styles.gcBadgeText}>GOODS CONSIGNMENT / CONSIGNEE COPY</Text>
+              {/* Header Banner: Deep Blue #0a3a72 matching PDF with Center Highway Slashes & Large Logo */}
+              <View style={[styles.gcHeaderBanner, !isDesktop && { flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
+                <View style={styles.brandRow}>
+                  <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
+                  <View style={styles.brandTextGroup}>
+                    <Text style={styles.brandMainTitle}>NEW BALAJI TRANSPORTS</Text>
+                    <Text style={styles.brandSubTitle}>Lorry Suppliers & Commission Agent</Text>
                   </View>
                 </View>
-                <View style={[styles.gcHeaderContact, styles.contactBox, !isDesktop && { minWidth: '100%', maxWidth: '100%', alignItems: 'center' }]}>
-                  <TextInput
-                    style={[styles.textInput, styles.contactAddress]}
-                    value={addressLine1}
-                    onChangeText={setAddressLine1}
-                    placeholder="3/131, V.K.V. Complex, 1st Floor,"
-                    placeholderTextColor="#94a3b8"
-                  />
-                  <TextInput
-                    style={[styles.textInput, styles.contactAddress]}
-                    value={addressLine2}
-                    onChangeText={setAddressLine2}
-                    placeholder="Bangalore Bye Pass Road, Kandampatty (Po.)"
-                    placeholderTextColor="#94a3b8"
-                  />
-                  <View style={styles.contactNumbers}>
-                    <View style={styles.phoneRow}>
-                      <MaterialIcons name="phone" size={12} color="#172554" />
-                      <TextInput
-                        style={[styles.textInput, styles.phoneInput]}
-                        value={phone1}
-                        onChangeText={setPhone1}
-                        placeholder="94433 51789"
-                        placeholderTextColor="#94a3b8"
-                      />
-                    </View>
-                    <View style={styles.phoneRow}>
-                      <MaterialIcons name="phone" size={12} color="#172554" />
-                      <TextInput
-                        style={[styles.textInput, styles.phoneInput]}
-                        value={phone2}
-                        onChangeText={setPhone2}
-                        placeholder="93622 51789"
-                        placeholderTextColor="#94a3b8"
-                      />
-                    </View>
-                    <View style={styles.phoneRow}>
-                      <MaterialIcons name="phone" size={12} color="#172554" />
-                      <TextInput
-                        style={[styles.textInput, styles.phoneInput]}
-                        value={phone3}
-                        onChangeText={setPhone3}
-                        placeholder="97892 71721"
-                        placeholderTextColor="#94a3b8"
-                      />
-                    </View>
+
+                {/* Center Slanted Highway Slashes */}
+                {isDesktop && (
+                  <View style={styles.centerHighwaySlashes} pointerEvents="none">
+                    <View style={styles.slashGold} />
+                    <View style={styles.slashWhite} />
+                  </View>
+                )}
+
+                <View style={[styles.headerRightArea, !isDesktop && { alignItems: 'flex-start', marginTop: 4 }]}>
+                  <View style={[styles.addressDetails, !isDesktop && { alignItems: 'flex-start' }]}>
+                    <Text style={styles.addressLineText}>{addressLine1}</Text>
+                    <Text style={styles.addressLineText}>{addressLine2}</Text>
+                    <Text style={styles.phoneNumbersText}>{phone1} | {phone2} | {phone3}</Text>
+                    <Text style={styles.contactEmailText}>{email}</Text>
+                    <Text style={styles.contactWebText}>{website}</Text>
                   </View>
                 </View>
               </View>
 
-              <View style={styles.gcSectionRow}>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockWide]}>
-                  <Text style={styles.fieldLabel}>From</Text>
-                  <TextInput style={styles.fieldInput} value={from} onChangeText={setFrom} placeholder="From" />
-                </View>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockMedium]}>
-                  <Text style={styles.fieldLabel}>Truck No.</Text>
-                  <TextInput style={styles.fieldInput} value={truckNumber} onChangeText={setTruckNumber} placeholder="Truck No." />
-                </View>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockMedium, styles.gcFieldBlockLarge]}>
-                  <Text style={styles.fieldLabel}>G.C. Note No.</Text>
-                  <TextInput
-                    style={[styles.fieldInput, styles.noteNumberInput, styles.readOnlyField]}
-                    value={noteNumber}
-                    editable={false}
-                    placeholder="MAR-26-01"
-                    placeholderTextColor="#c70000"
-                  />
+              {/* Pill Banner */}
+              <View style={styles.pillBannerContainer}>
+                <View style={styles.pillBanner}>
+                  <Text style={styles.pillBannerText}>GOODS CONSIGNMENT / CONSIGNEE COPY</Text>
                 </View>
               </View>
 
-              <View style={styles.gcSectionRow}>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockWide]}>
-                  <Text style={styles.fieldLabel}>To</Text>
-                  <TextInput style={styles.fieldInput} value={to} onChangeText={setTo} placeholder="To" />
+              {/* Dotted Underline Input Form Fields */}
+              <View style={styles.fieldsContainer}>
+                {/* Row 1: G.C. Note No. | Truck No. | Date */}
+                <View style={[styles.formRow, !isDesktop && { flexDirection: 'column', gap: 8 }]}>
+                  <View style={[styles.fieldBlock, { flex: 1.1 }]}>
+                    <Text style={styles.fieldLabel}>G.C. Note No. :</Text>
+                    <TextInput
+                      style={[styles.fieldInput, styles.noteNumberInput]}
+                      value={noteNumber}
+                      editable={false}
+                      placeholder="Auto"
+                      placeholderTextColor="#dc2626"
+                    />
+                  </View>
+                  <View style={[styles.fieldBlock, { flex: 1.1 }]}>
+                    <Text style={styles.fieldLabel}>Truck No. :</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={truckNumber}
+                      onChangeText={setTruckNumber}
+                      placeholder="e.g. TN 30 AX 1234"
+                      placeholderTextColor="#94a3b8"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                  <View style={[styles.fieldBlock, { flex: 0.9 }]}>
+                    <Text style={styles.fieldLabel}>Date :</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={gcDate}
+                      onChangeText={setGcDate}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
                 </View>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockMedium]}>
-                  <Text style={styles.fieldLabel}>Date</Text>
-                  <TextInput style={styles.fieldInput} value={gcDate} onChangeText={setGcDate} placeholder="____ / ____ / 20__" placeholderTextColor="#94a3b8" />
+
+                {/* Row 2: From | To */}
+                <View style={[styles.formRow, !isDesktop && { flexDirection: 'column', gap: 8 }]}>
+                  <View style={[styles.fieldBlock, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>From :</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={from}
+                      onChangeText={setFrom}
+                      placeholder="Source origin"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+                  <View style={[styles.fieldBlock, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>To :</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={to}
+                      onChangeText={setTo}
+                      placeholder="Destination"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
                 </View>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockMedium]}>
-                  <Text style={styles.fieldLabel}>As Per Bill No.</Text>
-                  <TextInput style={styles.fieldInput} value={billNumber} onChangeText={setBillNumber} placeholder="Bill No." />
+
+                {/* Row 3: Consignor M/s. | GSTIN */}
+                <View style={[styles.formRow, !isDesktop && { flexDirection: 'column', gap: 8 }]}>
+                  <View style={[styles.fieldBlock, { flex: 1.5 }]}>
+                    <Text style={styles.fieldLabel}>Consignor M/s.</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={consignor}
+                      onChangeText={setConsignor}
+                      placeholder="Consignor Company / Name"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+                  <View style={[styles.fieldBlock, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>GSTIN :</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={consignorGst}
+                      onChangeText={setConsignorGst}
+                      placeholder="Consignor GSTIN"
+                      placeholderTextColor="#94a3b8"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                </View>
+
+                {/* Row 4: Consignee M/s. | GSTIN */}
+                <View style={[styles.formRow, !isDesktop && { flexDirection: 'column', gap: 8 }]}>
+                  <View style={[styles.fieldBlock, { flex: 1.5 }]}>
+                    <Text style={styles.fieldLabel}>Consignee M/s.</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={consignee}
+                      onChangeText={setConsignee}
+                      placeholder="Consignee Company / Name"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+                  <View style={[styles.fieldBlock, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>GSTIN :</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={consigneeGst}
+                      onChangeText={setConsigneeGst}
+                      placeholder="Consignee GSTIN"
+                      placeholderTextColor="#94a3b8"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                </View>
+
+                {/* Row 5: AS PER BILL NO. | Delivery at */}
+                <View style={[styles.formRow, !isDesktop && { flexDirection: 'column', gap: 8 }]}>
+                  <View style={[styles.fieldBlock, { flex: 1.2 }]}>
+                    <Text style={styles.fieldLabel}>AS PER BILL NO.</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={billNumber}
+                      onChangeText={setBillNumber}
+                      placeholder="Invoice / Bill No."
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+                  <View style={[styles.fieldBlock, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>Delivery at :</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={deliveryAt}
+                      onChangeText={setDeliveryAt}
+                      placeholder="e.g. Door Delivery"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
                 </View>
               </View>
 
-              <View style={styles.gcSectionRow}>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockWide]}>
-                  <Text style={styles.fieldLabel}>Consignor M/s.</Text>
-                  <TextInput style={styles.fieldInput} value={consignor} onChangeText={setConsignor} placeholder="Consignor" />
-                </View>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockWide]}>
-                  <Text style={styles.fieldLabel}>Consignee M/s.</Text>
-                  <TextInput style={styles.fieldInput} value={consignee} onChangeText={setConsignee} placeholder="Consignee" />
-                </View>
-              </View>
-
-              <View style={styles.gcSectionRow}>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockMedium]}>
-                  <Text style={styles.fieldLabel}>Consignor GSTIN</Text>
-                  <TextInput style={styles.fieldInput} value={consignorGst} onChangeText={setConsignorGst} placeholder="Consignor GSTIN" autoCapitalize="characters" />
-                </View>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockMedium]}>
-                  <Text style={styles.fieldLabel}>Consignee GSTIN</Text>
-                  <TextInput style={styles.fieldInput} value={consigneeGst} onChangeText={setConsigneeGst} placeholder="Consignee GSTIN" autoCapitalize="characters" />
-                </View>
-                <View style={[styles.gcFieldBlock, styles.gcFieldBlockMedium]}>
-                  <Text style={styles.fieldLabel}>PAN No.</Text>
-                  <TextInput style={styles.fieldInput} value={panNumber} onChangeText={setPanNumber} placeholder="AMTPR8487P" autoCapitalize="characters" />
-                </View>
-              </View>
-
-              <View style={[styles.gcTableRow, !isDesktop && { flexDirection: 'column' }]}>
-                <View style={!isDesktop && { marginBottom: 16, width: '100%' }}>
+              {/* Main Grid: Items Table + Amount Box */}
+              <View style={[styles.mainTableContainer, !isDesktop && { flexDirection: 'column' }]}>
+                {/* Left Table: Items */}
+                <View style={[styles.itemsTableBox, !isDesktop && { width: '100%', marginBottom: 12 }]}>
                   <ScrollView horizontal={!isDesktop} showsHorizontalScrollIndicator={true} style={{ flexGrow: 0 }}>
-                    <View style={[styles.gcTableMain, !isDesktop && { width: 640 }]}>
-                      <View style={[styles.tableRow, styles.tableHeaderRow]}>
-                        <Text style={[styles.tableCell, styles.tableHeaderText, styles.tableCellSmall]}>No. of Articles</Text>
-                        <Text style={[styles.tableCell, styles.tableHeaderText, styles.tableCellLarge]}>Description of Goods{"\n"}(Said to Contain)</Text>
-                        <Text style={[styles.tableCell, styles.tableHeaderText, styles.tableCellSmall]}>Weight</Text>
-                        <Text style={[styles.tableCell, styles.tableHeaderText, styles.tableCellSmall]}>Value (Rs.)</Text>
+                    <View style={!isDesktop ? { width: 560 } : { width: '100%' }}>
+                      <View style={styles.itemsHeaderRow}>
+                        <Text style={[styles.itemsHeaderCell, styles.colArticles]}>No. of{"\n"}Articles</Text>
+                        <Text style={[styles.itemsHeaderCell, styles.colDesc]}>Description of Goods{"\n"}(Said to Contain)</Text>
+                        <Text style={[styles.itemsHeaderCell, styles.colWeight]}>Weight</Text>
                       </View>
+
                       {items.map((item, index) => (
-                        <View key={index} style={styles.tableRow}>
+                        <View key={index} style={styles.itemsDataRow}>
                           <TextInput
-                            style={[styles.tableCell, styles.tableCellInput, styles.tableCellSmall]}
+                            style={[styles.itemsInputCell, styles.colArticles, { textAlign: 'center' }]}
                             value={item.articlesCount}
-                            keyboardType="numeric"
-                            onChangeText={(value) => updateItemField(index, 'articlesCount', value)}
+                            onChangeText={(val) => updateItemField(index, 'articlesCount', val)}
                             placeholder=""
+                            keyboardType="numeric"
                           />
                           <TextInput
-                            style={[styles.tableCell, styles.tableCellInput, styles.tableCellLarge]}
+                            style={[styles.itemsInputCell, styles.colDesc, { paddingLeft: 8 }]}
                             value={item.description}
-                            onChangeText={(value) => updateItemField(index, 'description', value)}
-                            placeholder="Description"
+                            onChangeText={(val) => updateItemField(index, 'description', val)}
+                            placeholder={`Item ${index + 1}`}
+                            placeholderTextColor="#cbd5e1"
                           />
                           <TextInput
-                            style={[styles.tableCell, styles.tableCellInput, styles.tableCellSmall]}
+                            style={[styles.itemsInputCell, styles.colWeight, { textAlign: 'right', paddingRight: 8 }]}
                             value={item.weight}
+                            onChangeText={(val) => updateItemField(index, 'weight', val)}
+                            placeholder="0.00"
+                            placeholderTextColor="#cbd5e1"
                             keyboardType="numeric"
-                            onChangeText={(value) => updateItemField(index, 'weight', value)}
-                            placeholder=""
-                          />
-                          <TextInput
-                            style={[styles.tableCell, styles.tableCellInput, styles.tableCellSmall]}
-                            value={item.value}
-                            onChangeText={(value) => updateItemField(index, 'value', value)}
-                            placeholder=""
                           />
                         </View>
                       ))}
-                      <View style={styles.tableFooterRow}>
-                        <Text style={styles.tableFooterLabel}>Value Rs.</Text>
-                        <TextInput style={styles.tableFooterInput} value={itemsTotalValueDisplay} editable={false} />
-                      </View>
-                      <View style={styles.bankInfoBox}>
-                        <Text style={styles.bankInfoTitle}>BANK DETAILS</Text>
-                        <View style={styles.bankInfoRow}>
-                          <Text style={styles.bankInfoLabel}>A/C Name :</Text>
-                          <TextInput style={styles.bankInfoValue} value={bankAccountName} onChangeText={setBankAccountName} />
-                        </View>
-                        <View style={styles.bankInfoRow}>
-                          <Text style={styles.bankInfoLabel}>A/C No. :</Text>
-                          <TextInput style={styles.bankInfoValue} value={bankAccountNumber} onChangeText={setBankAccountNumber} keyboardType="numeric" />
-                        </View>
-                        <View style={styles.bankInfoRow}>
-                          <Text style={styles.bankInfoLabel}>IFSC Code :</Text>
-                          <TextInput style={styles.bankInfoValue} value={bankIfsc} onChangeText={setBankIfsc} autoCapitalize="characters" />
-                        </View>
-                        <View style={styles.bankInfoRow}>
-                          <Text style={styles.bankInfoLabel}>Bank :</Text>
-                          <TextInput style={styles.bankInfoValue} value={bankName} onChangeText={setBankName} />
-                        </View>
-                        <View style={styles.bankInfoRow}>
-                          <Text style={styles.bankInfoLabel}>Branch :</Text>
-                          <TextInput style={styles.bankInfoValue} value={bankBranch} onChangeText={setBankBranch} />
-                        </View>
-                      </View>
                     </View>
                   </ScrollView>
                 </View>
 
-                <View style={[styles.gcSummaryColumn, !isDesktop && { width: '100%', marginLeft: 0, marginTop: 16 }]}>
-                  <View style={[styles.amountHeader, styles.amountHeaderTop]}>
-                    <Text style={styles.amountLabel}>AMOUNT</Text>
-                  </View>
-                  <View style={[styles.amountHeader, styles.amountHeaderRow]}>
-                    <Text style={[styles.amountLabel, styles.amountLabelSmall]}>Rs.</Text>
-                    <Text style={[styles.amountLabel, styles.amountLabelSmall]}>Ps.</Text>
-                  </View>
-                  {[
-                    { label: 'Freight Amount', value: freight, setter: setFreight },
-                    { label: 'CGST (%)', value: cgstPercent.toString(), setter: (text: string) => setCgstPercent(Number(text) || 0), amount: cgstAmount.toFixed(2) },
-                    { label: 'SGST (%)', value: sgstPercent.toString(), setter: (text: string) => setSgstPercent(Number(text) || 0), amount: sgstAmount.toFixed(2) },
-                    { label: 'IGST (%)', value: igstPercent.toString(), setter: (text: string) => setIgstPercent(Number(text) || 0), amount: igstAmount.toFixed(2) },
-                    { label: 'Total Tax', value: totalTax.toFixed(2), setter: undefined },
-                    { label: 'Grand Total', value: grandTotal.toFixed(2), setter: undefined },
-                    { label: 'Less Advance', value: lessAdvance, setter: setLessAdvance },
-                    { label: 'Balance', value: balanceDue.toFixed(2), setter: undefined },
-                  ].map((row, index) => (
-                    <View key={index} style={styles.amountRow}>
-                      <Text style={styles.amountRowLabel}>{row.label}</Text>
-                      {row.setter ? (
-                        <TextInput
-                          style={[styles.amountCell, styles.amountInput]}
-                          value={row.value}
-                          onChangeText={row.setter}
-                          editable={true}
-                          keyboardType="decimal-pad"
-                          placeholder=""
-                        />
-                      ) : (
-                        <Text style={[styles.amountCell, styles.amountInput, styles.amountReadonly]}>{row.value}</Text>
-                      )}
-                      <Text style={[styles.amountCell, styles.amountPs]}>{row.amount ?? '00'}</Text>
-                    </View>
-                  ))}
-                  <View style={styles.amountRow}>
-                    <Text style={styles.amountRowLabel}>Payable At</Text>
-                    <TextInput style={[styles.amountCell, styles.amountInput, styles.amountFullWidth]} value={payableAt} onChangeText={setPayableAt} placeholder="Payable At" />
+                {/* Right Table: Amount Box */}
+                <View style={[styles.amountPanelBox, !isDesktop && { width: '100%' }]}>
+                  <View style={styles.amountHeaderRow}>
+                    <Text style={styles.amountHeaderTitle}>AMOUNT</Text>
+                    <Text style={styles.amountHeaderRs}>Rs.</Text>
+                    <Text style={styles.amountHeaderPs}>Ps.</Text>
                   </View>
 
-                  <View style={styles.taxPaySection}>
-                    <Text style={styles.taxPayLabel}>GST TAX PAY</Text>
-                    {['Transport', 'Consignor', 'Consignee'].map((value) => (
-                      <TouchableOpacity
-                        key={value}
-                        style={styles.checkboxRow}
-                        onPress={() => setTaxPayee(value as 'Transport' | 'Consignor' | 'Consignee')}
-                      >
-                        <View style={[styles.checkbox, taxPayee === value && styles.checkboxActive]} />
-                        <Text style={styles.checkboxText}>{value}</Text>
-                      </TouchableOpacity>
-                    ))}
-                    <Text style={styles.gstinLabel}>GSTIN</Text>
-                    <TextInput style={styles.gstinInput} value={gstinNumber} onChangeText={setGstinNumber} autoCapitalize="characters" />
-                    <Text style={styles.panLabel}>PAN No.</Text>
-                    <TextInput style={styles.gstinInput} value={panNumber} onChangeText={setPanNumber} autoCapitalize="characters" />
-                    <Text style={styles.deliveryLabel}>Delivery At</Text>
-                    <TextInput style={styles.gstinInput} value={deliveryAt} onChangeText={setDeliveryAt} placeholder="Delivery At" />
+                  <View style={styles.amountDataRow}>
+                    <Text style={styles.amountRowLabel}>Freight</Text>
+                    <TextInput
+                      style={styles.amountValueInput}
+                      value={freight}
+                      onChangeText={setFreight}
+                      placeholder="0.00"
+                      keyboardType="decimal-pad"
+                    />
+                    <Text style={styles.amountPsLabel}>{formatRupeeParts(freight).ps || '00'}</Text>
+                  </View>
+
+                  <View style={styles.amountDataRow}>
+                    <Text style={styles.amountRowLabel}>CGST</Text>
+                    <TextInput
+                      style={styles.amountValueInput}
+                      value={cgstAmount > 0 ? cgstAmount.toFixed(2) : ''}
+                      onChangeText={(val) => setCgstPercent(fValue > 0 ? (Number(val) / fValue) * 100 : 0)}
+                      placeholder="0.00"
+                      keyboardType="decimal-pad"
+                    />
+                    <Text style={styles.amountPsLabel}>{formatRupeeParts(cgstAmount).ps || '00'}</Text>
+                  </View>
+
+                  <View style={styles.amountDataRow}>
+                    <Text style={styles.amountRowLabel}>SGST</Text>
+                    <TextInput
+                      style={styles.amountValueInput}
+                      value={sgstAmount > 0 ? sgstAmount.toFixed(2) : ''}
+                      onChangeText={(val) => setSgstPercent(fValue > 0 ? (Number(val) / fValue) * 100 : 0)}
+                      placeholder="0.00"
+                      keyboardType="decimal-pad"
+                    />
+                    <Text style={styles.amountPsLabel}>{formatRupeeParts(sgstAmount).ps || '00'}</Text>
+                  </View>
+
+                  <View style={styles.amountDataRow}>
+                    <Text style={styles.amountRowLabel}>IGST</Text>
+                    <TextInput
+                      style={styles.amountValueInput}
+                      value={igstAmount > 0 ? igstAmount.toFixed(2) : ''}
+                      onChangeText={(val) => setIgstPercent(fValue > 0 ? (Number(val) / fValue) * 100 : 0)}
+                      placeholder="0.00"
+                      keyboardType="decimal-pad"
+                    />
+                    <Text style={styles.amountPsLabel}>{formatRupeeParts(igstAmount).ps || '00'}</Text>
+                  </View>
+
+                  <View style={[styles.amountDataRow, styles.totalAmountRow]}>
+                    <Text style={[styles.amountRowLabel, { fontWeight: '900' }]}>Total</Text>
+                    <Text style={[styles.amountValueInput, styles.readOnlyAmount]}>{formatRequiredRupeeParts(grandTotal).rs}</Text>
+                    <Text style={[styles.amountPsLabel, { fontWeight: '900' }]}>{formatRequiredRupeeParts(grandTotal).ps}</Text>
+                  </View>
+
+                  <View style={styles.amountDataRow}>
+                    <Text style={styles.amountRowLabel}>Less Advance</Text>
+                    <TextInput
+                      style={styles.amountValueInput}
+                      value={lessAdvance}
+                      onChangeText={setLessAdvance}
+                      placeholder="0.00"
+                      keyboardType="decimal-pad"
+                    />
+                    <Text style={styles.amountPsLabel}>{formatRupeeParts(lessAdvance).ps || '00'}</Text>
+                  </View>
+
+                  <View style={[styles.amountDataRow, styles.balanceAmountRow]}>
+                    <Text style={[styles.amountRowLabel, { fontWeight: '900', color: '#0b2c6d' }]}>Balance</Text>
+                    <Text style={[styles.amountValueInput, styles.readOnlyAmount, { color: '#0b2c6d' }]}>{formatRequiredRupeeParts(balanceDue).rs}</Text>
+                    <Text style={[styles.amountPsLabel, { fontWeight: '900', color: '#0b2c6d' }]}>{formatRequiredRupeeParts(balanceDue).ps}</Text>
+                  </View>
+
+                  <View style={styles.amountDataRow}>
+                    <Text style={styles.amountRowLabel}>Payable at</Text>
+                    <TextInput
+                      style={[styles.amountValueInput, { flex: 1.5, textAlign: 'left', paddingHorizontal: 6 }]}
+                      value={payableAt}
+                      onChangeText={setPayableAt}
+                      placeholder="Location"
+                      placeholderTextColor="#94a3b8"
+                    />
                   </View>
                 </View>
               </View>
 
-              <View style={styles.paymentFooter}>
-                <View style={[styles.paymentTypeBlock, !isDesktop && { flexDirection: 'column', alignItems: 'stretch', gap: 16 }]}>
-                  <View>
-                    <Text style={styles.fieldLabel}>PAYMENT TYPE</Text>
-                    <View style={styles.paymentTypeRow}>
-                      {[
-                        { label: 'TBB', value: 'TBB' },
-                        { label: 'TO PAY', value: 'TO_PAY' },
-                        { label: 'PAID', value: 'PAID' },
-                      ].map((option) => (
-                        <TouchableOpacity
-                          key={option.value}
-                          style={[styles.paymentCheckbox, paymentType === option.value && styles.paymentCheckboxActive]}
-                          onPress={() => setPaymentType(option.value as 'TBB' | 'TO_PAY' | 'PAID')}
-                        >
-                          <View style={[styles.checkbox, paymentType === option.value && styles.checkboxActive]} />
-                          <Text style={styles.paymentText}>{option.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
+              {/* Value Rs. & Payment Type Checkboxes */}
+              <View style={styles.valueAndPaymentRow}>
+                <View style={styles.valueRowBlock}>
+                  <Text style={styles.valueRowLabel}>Value Rs.</Text>
+                  <TextInput
+                    style={styles.valueRowInput}
+                    value={valueRs}
+                    onChangeText={setValueRs}
+                    placeholder="Enter declared value"
+                    placeholderTextColor="#94a3b8"
+                    editable={true}
+                  />
+                </View>
 
-                  <View style={[styles.rightFooterNote, !isDesktop && { paddingLeft: 0, alignItems: 'center', marginTop: 12 }]}>
-                    <Text style={styles.rightFooterTitle}>For NEW BALAJI TRANSPORTS</Text>
-                    <View style={styles.authorisedRow}>
-                      <Image
-                        source={require('../../assets/signatures/nbt-authorised-signature.png')}
-                        style={styles.authorisedSignatureImage}
-                        resizeMode="contain"
-                      />
-                      <Text style={styles.authorisedLabel}>Authorised Signatory</Text>
-                    </View>
+                <View style={styles.paymentCheckboxesGroup}>
+                  {(['TBB', 'TO_PAY', 'PAID'] as const).map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={styles.paymentCheckItem}
+                      onPress={() => setPaymentType(opt)}
+                    >
+                      <View style={[styles.checkSquare, paymentType === opt && styles.checkSquareActive]}>
+                        {paymentType === opt && <MaterialIcons name="check" size={12} color="#ffffff" />}
+                      </View>
+                      <Text style={styles.checkText}>{opt === 'TO_PAY' ? 'TO PAY' : opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <Text style={styles.rsAmountLabel}>Rs. {formatRequiredRupeeParts(grandTotal).rs}.{formatRequiredRupeeParts(grandTotal).ps}</Text>
+                </View>
+              </View>
+
+              {/* GST Tax Pay & Company Signature Title */}
+              <View style={styles.gstTaxAndCompanyRow}>
+                <View style={styles.gstTaxGroup}>
+                  <Text style={styles.gstTaxLabel}>GST TAX PAY :</Text>
+                  {(['Transport', 'Consignor', 'Consignee'] as const).map((payee) => (
+                    <TouchableOpacity
+                      key={payee}
+                      style={styles.paymentCheckItem}
+                      onPress={() => setTaxPayee(payee)}
+                    >
+                      <View style={[styles.checkSquare, taxPayee === payee && styles.checkSquareActive]}>
+                        {taxPayee === payee && <MaterialIcons name="check" size={12} color="#ffffff" />}
+                      </View>
+                      <Text style={styles.checkText}>{payee}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={styles.forCompanyTitleBox}>
+                  <Text style={styles.forCompanyTitle}>For NEW BALAJI TRANSPORTS</Text>
+                </View>
+              </View>
+
+              {/* Bank Details & GST Box Card */}
+              <View style={[styles.bankGstCard, !isDesktop && { flexDirection: 'column', gap: 10 }]}>
+                <View style={styles.bankCardCol}>
+                  <Text style={styles.bankCardTitle}>New Balaji Transports - Karur Vysya Bank</Text>
+                  <View style={styles.bankDetailLine}>
+                    <Text style={styles.bankFieldKey}>C/Account No. :</Text>
+                    <TextInput style={styles.bankFieldValueInput} value={bankAccountNumber} onChangeText={setBankAccountNumber} />
+                  </View>
+                  <View style={styles.bankDetailLine}>
+                    <Text style={styles.bankFieldKey}>IFSC Code :</Text>
+                    <TextInput style={styles.bankFieldValueInput} value={bankIfsc} onChangeText={setBankIfsc} autoCapitalize="characters" />
+                  </View>
+                  <View style={styles.bankDetailLine}>
+                    <Text style={styles.bankFieldKey}>Branch :</Text>
+                    <TextInput style={styles.bankFieldValueInput} value={bankBranch} onChangeText={setBankBranch} />
                   </View>
                 </View>
 
-                <View style={styles.paymentNoteBlock}>
-                  <Text style={styles.paymentNote}>These Goods are Booked at Owners risk and Insured by Consignor / Consignee. Subject to Salem Jurisdiction only.</Text>
-                </View>
+                {isDesktop && <View style={styles.cardVerticalDivider} />}
 
-                <View style={styles.paymentNoteBlockSecondary}>
-                  <Text style={styles.paymentNote}>Certified that the service provided is by a Goods Transport Agency (GTA). GST on this service is payable by the Recipient (Consignee) under Reverse Charge Mechanism (RCM) pursuant to Notification No. 13/2017-Central Tax (Rate), and no tax has been charged by the transporter.</Text>
+                <View style={styles.gstCardCol}>
+                  <View style={styles.gstDetailLine}>
+                    <Text style={styles.gstKeyText}>GSTIN</Text>
+                    <TextInput style={styles.gstValueInput} value={gstinNumber} onChangeText={setGstinNumber} autoCapitalize="characters" />
+                  </View>
+                  <View style={styles.gstDetailLine}>
+                    <Text style={styles.gstKeyText}>PAN No.</Text>
+                    <TextInput style={styles.gstValueInput} value={panNumber} onChangeText={setPanNumber} autoCapitalize="characters" />
+                  </View>
                 </View>
+              </View>
 
-                <View style={[styles.footerSignatureRow, !isDesktop && { flexDirection: 'column', gap: 10 }]}>
-                  <View style={styles.signatureBox}>
-                    <Text style={styles.signatureLabel}>DRIVER'S NAME</Text>
-                    <TextInput style={styles.signatureInput} value={driverName} onChangeText={setDriverName} placeholder="Driver's Name" />
-                  </View>
-                  <View style={styles.signatureBox}>
-                    <Text style={styles.signatureLabel}>DRIVER'S SIGNATURE</Text>
-                    <TextInput style={styles.signatureInput} value={driverSignature} onChangeText={setDriverSignature} placeholder="Signature" />
-                  </View>
-                  <View style={styles.signatureBox}>
-                    <Text style={styles.signatureLabel}>DL. No.</Text>
-                    <TextInput style={styles.signatureInput} value={dlNumber} onChangeText={setDlNumber} placeholder="DL No." autoCapitalize="characters" />
-                  </View>
-                  <View style={styles.signatureBox}>
-                    <Text style={styles.signatureLabel}>LORRY OWNER</Text>
-                    <TextInput style={styles.signatureInput} value={lorryOwner} onChangeText={setLorryOwner} placeholder="Owner Name" />
-                  </View>
+              {/* Disclaimer */}
+              <Text style={styles.disclaimerText}>
+                These Goods are Booked at Owners risk and Insured by Consignor / Consignee. Subject to Salem Jurisdiction only.
+              </Text>
+
+              {/* Driver & Lorry Owner Signatures Row */}
+              <View style={[styles.signatureFieldsRow, !isDesktop && { flexDirection: 'column', gap: 8 }]}>
+                <View style={styles.sigFieldBlock}>
+                  <Text style={styles.sigLabelText}>Driver's Signature :</Text>
+                  <TextInput
+                    style={styles.sigInputText}
+                    value={driverSignature}
+                    onChangeText={setDriverSignature}
+                    placeholder=""
+                  />
+                </View>
+                <View style={styles.sigFieldBlock}>
+                  <Text style={styles.sigLabelText}>Driver's Name :</Text>
+                  <TextInput
+                    style={styles.sigInputText}
+                    value={driverName}
+                    onChangeText={setDriverName}
+                    placeholder="Name"
+                    placeholderTextColor="#94a3b8"
+                  />
+                </View>
+                <View style={styles.sigFieldBlock}>
+                  <Text style={styles.sigLabelText}>DL No. :</Text>
+                  <TextInput
+                    style={styles.sigInputText}
+                    value={dlNumber}
+                    onChangeText={setDlNumber}
+                    placeholder="License #"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                  />
+                </View>
+                <View style={styles.sigFieldBlock}>
+                  <Text style={styles.sigLabelText}>Lorry Owner :</Text>
+                  <TextInput
+                    style={styles.sigInputText}
+                    value={lorryOwner}
+                    onChangeText={setLorryOwner}
+                    placeholder="Owner"
+                    placeholderTextColor="#94a3b8"
+                  />
+                </View>
+              </View>
+
+              {/* Highway Road Decoration Strip at Bottom */}
+              <View style={styles.highwayBottomStrip}>
+                <View style={styles.highwayDashesRow}>
+                  {Array.from({ length: 32 }).map((_, i) => (
+                    <View key={i} style={styles.highwayYellowDash} />
+                  ))}
                 </View>
               </View>
             </View>
 
-            <View style={[styles.formBottomBar, !isDesktop && { flexDirection: 'column', gap: 10, height: 'auto', marginBottom: 32 }]}>
+            {/* Bottom Action Buttons */}
+            <View style={[styles.formBottomBar, !isDesktop && { flexDirection: 'column', gap: 10 }]}>
               <TouchableOpacity
                 style={[styles.actionBtnLarge, editingGcId ? styles.updateBtnStyle : styles.saveBtnStyle, loading && { opacity: 0.6 }]}
                 onPress={handleSaveGC}
@@ -1913,7 +2184,6 @@ export default function GcScreen() {
       ) : (
         // GC ARCHIVE TAB
         <View style={{ flex: 1 }}>
-          {/* Search Bar inside Archive */}
           <View style={styles.archiveHeader}>
             <View style={styles.searchBox}>
               <MaterialIcons name="search" size={20} color={COLORS.outline} />
@@ -1927,7 +2197,6 @@ export default function GcScreen() {
             </View>
           </View>
 
-          {/* Month Acc Chip selection */}
           <View style={styles.monthListContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthChipsRow}>
               {activeMonths.length === 0 ? (
@@ -1948,7 +2217,6 @@ export default function GcScreen() {
             </ScrollView>
           </View>
 
-          {/* Monthly Aggregates Summary card */}
           {filteredNotes.length > 0 && (
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>{selectedMonth} Financial aggregates</Text>
@@ -1979,7 +2247,6 @@ export default function GcScreen() {
             </View>
           )}
 
-          {/* List of GC copies */}
           {loading ? (
             <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 32 }} />
           ) : filteredNotes.length === 0 ? (
@@ -2017,7 +2284,6 @@ export default function GcScreen() {
                     ) : null}
                   </View>
 
-                  {/* Action buttons */}
                   <View style={styles.actionRow}>
                     <TouchableOpacity style={styles.actionBtn} onPress={async () => { await db.togglePinGc(item.id); fetchGcNotes(); }}>
                       <MaterialIcons name="push-pin" size={16} color={item.isPinned ? '#d97706' : COLORS.textMuted} />
@@ -2052,7 +2318,7 @@ export default function GcScreen() {
         </View>
       )}
 
-      {/* Attractive Custom Modal Confirmation Dialog */}
+      {/* Confirmation Modal */}
       <Modal
         transparent
         visible={confirmModal.visible}
@@ -2164,745 +2430,612 @@ const styles = StyleSheet.create({
     padding: SPACING.gutter,
     paddingBottom: 96,
   },
-  formCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.outlineVariant,
-    padding: 16,
-    ...SHADOWS.light,
-  },
-  formSectionTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.outlineVariant,
-    paddingBottom: 6,
-    marginTop: 12,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-  },
-  gridRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  inputCol: {
-    flex: 1,
-  },
-  inputGroup: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: COLORS.textMuted,
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  formInput: {
-    borderWidth: 1,
-    borderColor: COLORS.outlineVariant,
-    borderRadius: 6,
-    height: 44,
-    backgroundColor: COLORS.surfaceContainerLow,
-    paddingHorizontal: 10,
-    fontSize: 13,
-    color: COLORS.textDark,
-    fontWeight: '500',
-  },
-  taxChipRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginVertical: 4,
-  },
-  taxChip: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: COLORS.outlineVariant,
-    borderRadius: 16,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-  },
-  taxChipActive: {
-    backgroundColor: COLORS.secondary,
-    borderColor: COLORS.secondary,
-  },
-  taxChipText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: COLORS.textMuted,
-  },
-  taxChipTextActive: {
-    color: '#ffffff',
-  },
-  ledgerSheet: {
-    backgroundColor: COLORS.surfaceContainerLow,
-    borderRadius: 6,
-    padding: 12,
-    marginVertical: 12,
-    borderWidth: 1,
-    borderColor: COLORS.outlineVariant,
-  },
-  ledgerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
-  },
-  ledgerLabel: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-  },
-  ledgerVal: {
-    fontSize: 11,
-    color: COLORS.textDark,
-    fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
-  ledgerTotalRow: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.outlineVariant,
-    paddingTop: 6,
-    marginTop: 4,
-  },
-  ledgerTotalLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  ledgerTotalVal: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
-  ledgerBalanceRow: {
-    borderTopWidth: 2,
-    borderTopColor: COLORS.primary,
-    paddingTop: 8,
-    marginTop: 6,
-  },
-  ledgerBalanceLabel: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: COLORS.secondary,
-  },
-  ledgerBalanceVal: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: COLORS.secondary,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
-  submitBtn: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.secondary,
-    height: 52,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 8,
-    ...SHADOWS.light,
-  },
-  submitBtnText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
   gcWrapper: {
     flex: 1,
     paddingBottom: 48,
   },
-  gcPage: {
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#0f172a',
-    borderRadius: 12,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  gcHeader: {
+  editingBanner: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#93c5fd',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-    gap: 12,
-  },
-  gcHeaderBrand: {
-    flex: 0.95,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    borderRightWidth: 1,
-    borderRightColor: '#172554',
-    paddingRight: 16,
-  },
-  logoCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 2,
-    borderColor: '#172554',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-    marginBottom: 8,
-    overflow: 'hidden',
-    padding: 2,
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    gap: 10,
+    ...SHADOWS.light,
   },
-  logoImage: {
-    width: '100%',
-    height: '100%',
+  editingBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
   },
-  brandTitle: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#172554',
-    textAlign: 'center',
-    letterSpacing: 0.8,
+  editingBannerTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#1e40af',
   },
-  brandSubtitle: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#172554',
-    textAlign: 'center',
+  editingBannerSub: {
+    fontSize: 11,
+    color: '#3b82f6',
     marginTop: 2,
   },
-  gcHeaderTitle: {
-    flex: 2.2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gcHeaderTitleTop: {
-    fontSize: 11,
-    color: '#172554',
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  gcHeaderMain: {
-    fontSize: 34,
-    fontWeight: '900',
-    color: '#172554',
-    letterSpacing: 2,
-    textAlign: 'center',
-  },
-  gcHeaderSub: {
-    fontSize: 12,
-    color: '#172554',
-    fontWeight: '700',
-    marginTop: 6,
-  },
-  gcBadge: {
-    marginTop: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    backgroundColor: '#172554',
-    borderRadius: 6,
-  },
-  gcBadgeText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textAlign: 'center',
-  },
-  gcHeaderContact: {
-    flex: 1,
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    maxWidth: 260,
-    minWidth: 240,
-  },
-  contactBox: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    padding: 10,
-    backgroundColor: '#ffffff',
-  },
-  contactAddress: {
-    width: '100%',
-    marginBottom: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    color: '#172554',
-    fontSize: 11,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  contactNumbers: {
-    marginTop: 4,
-    width: '100%',
-    gap: 4,
-  },
-  phoneRow: {
+  cancelEditBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    width: '100%',
-  },
-  phoneInput: {
-    flex: 1,
+    gap: 4,
+    backgroundColor: '#fee2e2',
+    borderColor: '#fca5a5',
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    backgroundColor: '#f8fafc',
-    color: '#172554',
-    fontSize: 11,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#172554',
     borderRadius: 6,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    color: '#172554',
-    backgroundColor: '#ffffff',
+    paddingVertical: 6,
+  },
+  cancelEditBtnText: {
     fontSize: 11,
+    fontWeight: 'bold',
+    color: '#dc2626',
   },
-  addressInput: {
-    width: '100%',
-    marginBottom: 6,
-  },
-  contactRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 6,
-  },
-  contactInput: {
-    flex: 1,
-  },
-  gcSectionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 10,
-  },
-  gcFieldBlock: {
-    flex: 1,
-    minWidth: 140,
-    borderWidth: 1,
-    borderColor: '#0f172a',
-    borderRadius: 6,
-    padding: 6,
+
+  // Design 3 Highway Layout Styles
+  gcPage: {
     backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    padding: 20,
+    ...SHADOWS.medium,
   },
-  gcFieldBlockLarge: {
-    flex: 1.4,
-    borderWidth: 1,
-    borderColor: '#0f172a',
-    borderRadius: 6,
-    padding: 8,
-    backgroundColor: '#ffffff',
-  },
-  gcFieldBlockMedium: {
-    flex: 1,
-  },
-  gcFieldBlockWide: {
-    flex: 1.6,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    color: '#0f172a',
-    fontWeight: '700',
-    marginBottom: 4,
-    letterSpacing: 0.2,
-  },
-  fieldInput: {
-    borderWidth: 0,
-    height: 32,
-    paddingHorizontal: 4,
-    color: '#0f172a',
-    backgroundColor: 'transparent',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  noteNumberInput: {
-    color: '#c70000',
-    fontWeight: '900',
-  },
-  readOnlyField: {
-    backgroundColor: '#f1f5f9',
-    color: '#000000',
-  },
-  gcTableRow: {
-    flexDirection: 'row',
-  },
-  gcTableMain: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 6,
-    overflow: 'hidden',
-    backgroundColor: '#ffffff',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    minHeight: 42,
-    borderBottomWidth: 1,
-    borderBottomColor: '#172554',
-  },
-  tableHeaderRow: {
-    backgroundColor: '#172554',
-    minHeight: 42,
-    alignItems: 'center',
-  },
-  tableCell: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderRightWidth: 1,
-    borderRightColor: '#172554',
-    justifyContent: 'center',
-  },
-  tableHeaderText: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  tableCellSmall: {
-    flex: 0.9,
-  },
-  tableCellLarge: {
-    flex: 2.4,
-  },
-  tableCellInput: {
-    paddingVertical: 8,
-    fontSize: 11,
-    color: '#172554',
-    backgroundColor: 'transparent',
-  },
-  tableFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#172554',
-    padding: 10,
-    backgroundColor: '#f7f9ff',
-  },
-  tableFooterLabel: {
-    flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#172554',
-  },
-  tableFooterInput: {
-    flex: 1.2,
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    height: 34,
-    backgroundColor: '#ffffff',
-    color: '#172554',
-    fontSize: 11,
-  },
-  bankInfoBox: {
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 6,
-    padding: 10,
-    margin: 10,
-    backgroundColor: '#ffffff',
-  },
-  bankInfoTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#172554',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  bankInfoRow: {
+  gcHeaderBanner: {
+    backgroundColor: '#0a3a72',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    position: 'relative',
+    overflow: 'hidden',
+    marginBottom: 8,
   },
-  bankInfoLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#172554',
-    flex: 0.45,
-  },
-  bankInfoValue: {
-    flex: 0.55,
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 4,
-    height: 32,
-    paddingHorizontal: 8,
-    backgroundColor: '#f7f9ff',
-    color: '#172554',
-    fontSize: 11,
-  },
-  gcSummaryColumn: {
-    width: 240,
-    marginLeft: 10,
-    borderWidth: 1,
-    borderColor: '#0f172a',
-    borderRadius: 6,
-    backgroundColor: '#ffffff',
-    padding: 10,
-  },
-  amountHeader: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#0f172a',
-    paddingVertical: 8,
+  brandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
+    zIndex: 2,
   },
-  amountHeaderTop: {
-    backgroundColor: '#0f172a',
+  logoImage: {
+    width: 76,
+    height: 76,
+  },
+  brandTextGroup: {
+    justifyContent: 'center',
+  },
+  brandMainTitle: {
+    fontSize: 25,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  brandSubTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#a8c6ed',
+    marginTop: 3,
+  },
+  centerHighwaySlashes: {
+    position: 'absolute',
+    left: '52%',
+    top: -20,
+    bottom: -20,
+    width: 80,
+    overflow: 'hidden',
+    zIndex: 1,
+  },
+  slashGold: {
+    position: 'absolute',
+    left: 8,
+    top: -20,
+    width: 24,
+    height: 150,
+    backgroundColor: '#f2a800',
+    transform: [{ skewX: '-24deg' }],
+  },
+  slashWhite: {
+    position: 'absolute',
+    left: 42,
+    top: -20,
+    width: 6,
+    height: 150,
+    backgroundColor: '#ffffff',
+    transform: [{ skewX: '-24deg' }],
+  },
+  headerRightArea: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    zIndex: 2,
+  },
+  addressDetails: {
+    alignItems: 'flex-end',
+  },
+  addressLineText: {
+    fontSize: 9.5,
+    color: '#ffffff',
+    fontWeight: '500',
+    lineHeight: 14,
+  },
+  phoneNumbersText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#f2a800',
+    marginTop: 3,
+    letterSpacing: 0.3,
+  },
+  contactEmailText: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#a8c6ed',
+    marginTop: 1,
+  },
+  contactWebText: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#a8c6ed',
+  },
+
+  // Pill Banner
+  pillBannerContainer: {
+    marginVertical: 8,
+    alignItems: 'flex-start',
+  },
+  pillBanner: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f2a800',
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  pillBannerText: {
+    color: '#0a3a72',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+
+  // Fields Form Section
+  fieldsContainer: {
+    gap: 8,
+    marginBottom: 14,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  fieldBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderBottomWidth: 1,
+    borderBottomColor: '#93c5fd',
+    borderStyle: 'dashed',
+    paddingBottom: 2,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0b2c6d',
+    marginRight: 6,
+  },
+  fieldInput: {
+    flex: 1,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#0f172a',
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    height: 26,
+  },
+  noteNumberInput: {
+    color: '#dc2626',
+    fontWeight: '900',
+  },
+
+  // Main Table Container
+  mainTableContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  itemsTableBox: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: '#2563eb',
+    borderRightWidth: Platform.OS === 'web' ? 0 : 1.5,
+    backgroundColor: '#ffffff',
+  },
+  itemsHeaderRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#2563eb',
+    backgroundColor: '#ffffff',
+  },
+  itemsHeaderCell: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0b2c6d',
+    textAlign: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRightWidth: 1.5,
+    borderRightColor: '#2563eb',
+  },
+  itemsDataRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#bfdbfe',
+    minHeight: 28,
+  },
+  itemsInputCell: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0f172a',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    borderRightWidth: 1.5,
+    borderRightColor: '#2563eb',
+  },
+  colArticles: {
+    width: 80,
+  },
+  colDesc: {
+    flex: 1,
+  },
+  colWeight: {
+    width: 90,
+  },
+
+  // Amount Panel Box
+  amountPanelBox: {
+    width: 250,
+    borderWidth: 1.5,
+    borderColor: '#2563eb',
+    backgroundColor: '#ffffff',
   },
   amountHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#172554',
-  },
-  amountLabel: {
-    color: '#0f172a',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  amountLabelSmall: {
-    color: '#0f172a',
-    fontSize: 10,
-    flex: 1,
-    textAlign: 'center',
-  },
-  amountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#0b2c6d',
     paddingVertical: 6,
+    paddingHorizontal: 6,
+    alignItems: 'center',
   },
-  amountRowLabel: {
-    flex: 1.4,
-    fontSize: 11,
-    color: '#172554',
-    fontWeight: '700',
-  },
-  amountCell: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#0f172a',
-    borderRadius: 4,
-    height: 34,
-    paddingHorizontal: 8,
-    marginRight: 4,
-    backgroundColor: '#ffffff',
-    color: '#0f172a',
-    fontSize: 11,
-  },
-  amountInput: {
-    textAlign: 'right',
-  },
-  amountPs: {
-    width: 28,
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#172554',
-    textAlign: 'center',
-  },
-  amountReadonly: {
-    backgroundColor: '#f8fafc',
-    color: '#0f172a',
-    textAlign: 'right',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  amountFullWidth: {
-    flex: 2.2,
-  },
-  taxPaySection: {
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#172554',
-    paddingTop: 10,
-  },
-  taxPayLabel: {
+  amountHeaderTitle: {
+    flex: 1.2,
+    color: '#ffffff',
     fontSize: 10,
     fontWeight: '800',
-    color: '#172554',
-    marginBottom: 8,
   },
-  checkboxRow: {
+  amountHeaderRs: {
+    width: 60,
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  amountHeaderPs: {
+    width: 32,
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  amountDataRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#bfdbfe',
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    minHeight: 27,
+  },
+  amountRowLabel: {
+    flex: 1.2,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0b2c6d',
+  },
+  amountValueInput: {
+    width: 60,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'right',
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    height: 24,
+  },
+  amountPsLabel: {
+    width: 32,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'center',
+  },
+  totalAmountRow: {
+    backgroundColor: '#f8fafc',
+    borderTopWidth: 1,
+    borderTopColor: '#2563eb',
+  },
+  balanceAmountRow: {
+    backgroundColor: '#eff6ff',
+    borderTopWidth: 1,
+    borderTopColor: '#2563eb',
+  },
+  readOnlyAmount: {
+    fontWeight: '900',
+  },
+
+  // Value & Payment
+  valueAndPaymentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#93c5fd',
+    borderStyle: 'dashed',
+    paddingBottom: 4,
+    marginBottom: 8,
   },
-  checkbox: {
-    width: 16,
-    height: 16,
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 3,
+  valueRowBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  valueRowLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0b2c6d',
+    marginRight: 8,
+  },
+  valueRowInput: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0f172a',
+    height: 26,
+    paddingVertical: 2,
+  },
+  paymentCheckboxesGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  paymentCheckItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  checkSquare: {
+    width: 14,
+    height: 14,
+    borderWidth: 1.5,
+    borderColor: '#0b2c6d',
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#ffffff',
   },
-  checkboxActive: {
-    backgroundColor: '#172554',
+  checkSquareActive: {
+    backgroundColor: '#0b2c6d',
   },
-  checkboxText: {
-    fontSize: 10,
-    color: '#172554',
-    fontWeight: '600',
-  },
-  gstinLabel: {
-    fontSize: 10,
+  checkText: {
+    fontSize: 10.5,
     fontWeight: '700',
-    color: '#172554',
-    marginTop: 10,
+    color: '#0b2c6d',
   },
-  gstinInput: {
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 4,
-    height: 34,
-    paddingHorizontal: 8,
-    marginTop: 4,
-    backgroundColor: '#f7f9ff',
-    color: '#172554',
+  rsAmountLabel: {
     fontSize: 11,
+    fontWeight: '800',
+    color: '#0b2c6d',
+    marginLeft: 6,
   },
-  panLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#172554',
-    marginTop: 10,
-  },
-  deliveryLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#172554',
-    marginTop: 10,
-  },
-  paymentFooter: {
-    marginTop: 18,
-  },
-  paymentTypeBlock: {
+
+  // GST Tax & Company Signature
+  gstTaxAndCompanyRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 32,
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 10,
   },
-  paymentTypeRow: {
+  gstTaxGroup: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  gstTaxLabel: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#0b2c6d',
+  },
+  forCompanyTitleBox: {
+    marginRight: 10,
+  },
+  forCompanyTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#0b2c6d',
+  },
+
+  // Bank & GST Card
+  bankGstCard: {
+    flexDirection: 'row',
+    backgroundColor: '#edf5fd',
+    borderWidth: 1.5,
+    borderColor: '#3b82f6',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  bankCardCol: {
+    flex: 1.3,
+  },
+  bankCardTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0b2c6d',
+    marginBottom: 4,
+  },
+  bankDetailLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  bankFieldKey: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#334155',
+    width: 95,
+  },
+  bankFieldValueInput: {
+    flex: 1,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#0f172a',
+    height: 22,
+    paddingVertical: 1,
+    paddingHorizontal: 4,
+  },
+  cardVerticalDivider: {
+    width: 1.5,
+    backgroundColor: '#93c5fd',
+    height: '80%',
+    marginHorizontal: 16,
+  },
+  gstCardCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  gstDetailLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  gstKeyText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0b2c6d',
+    width: 65,
+  },
+  gstValueInput: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0b2c6d',
+    height: 24,
+    paddingVertical: 1,
+    paddingHorizontal: 4,
+  },
+
+  // Disclaimer
+  disclaimerText: {
+    fontSize: 9.5,
+    color: '#475569',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+
+  // Signatures Row
+  signatureFieldsRow: {
+    flexDirection: 'row',
+    gap: 14,
+    marginBottom: 10,
+  },
+  sigFieldBlock: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderBottomWidth: 1,
+    borderBottomColor: '#93c5fd',
+    borderStyle: 'dashed',
+    paddingBottom: 2,
+  },
+  sigLabelText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0b2c6d',
+    marginRight: 4,
+  },
+  sigInputText: {
+    flex: 1,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#0f172a',
+    height: 24,
+    paddingVertical: 1,
+    paddingHorizontal: 4,
+  },
+
+  // Highway Bottom Strip
+  highwayBottomStrip: {
+    height: 14,
+    backgroundColor: '#0b2c6d',
+    borderRadius: 2,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginTop: 6,
+  },
+  highwayDashesRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: 12,
   },
-  paymentCheckbox: {
+  highwayYellowDash: {
+    width: 18,
+    height: 3,
+    backgroundColor: '#f59e0b',
+    borderRadius: 1,
+  },
+
+  // Bottom Actions
+  formBottomBar: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  actionBtnLarge: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  paymentCheckboxActive: {
-    backgroundColor: '#e0e7ff',
-    borderColor: '#172554',
-    paddingHorizontal: 4,
-    borderRadius: 4,
-  },
-  paymentText: {
-    fontSize: 10,
-    color: '#172554',
-    fontWeight: '700',
-  },
-  paymentNoteBlock: {
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 6,
-    padding: 10,
-    backgroundColor: '#eff6ff',
-  },
-  paymentNote: {
-    fontSize: 10,
-    color: '#172554',
-    lineHeight: 16,
-  },
-  rightFooterNote: {
-    flex: 1,
     justifyContent: 'center',
-    paddingLeft: 12,
-  },
-  rightFooterTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#172554',
-    marginBottom: 8,
-  },
-  authorisedRow: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  authorisedLine: {
-    width: 120,
-    borderTopWidth: 1,
-    borderTopColor: '#172554',
-  },
-  authorisedLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#172554',
-  },
-  authorisedSignatureImage: {
-    maxWidth: 110,
-    width: '100%',
-    aspectRatio: 2,
-    alignSelf: 'center',
-  },
-  paymentNoteBlockSecondary: {
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 6,
-    padding: 10,
-    backgroundColor: '#f8fafc',
-    marginTop: 10,
-  },
-  footerSignatureRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: 24,
-  },
-  signatureBox: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 6,
-    padding: 8,
-    backgroundColor: '#ffffff',
-  },
-  signatureLabel: {
-    fontSize: 10,
-    color: '#172554',
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  signatureInput: {
-    borderWidth: 1,
-    borderColor: '#172554',
-    borderRadius: 4,
-    height: 36,
+    gap: 6,
     paddingHorizontal: 8,
-    backgroundColor: '#f7f9ff',
-    color: '#172554',
-    fontSize: 11,
+    ...SHADOWS.light,
   },
+  saveBtnStyle: {
+    backgroundColor: '#047857',
+  },
+  updateBtnStyle: {
+    backgroundColor: '#2563eb',
+  },
+  downloadBtnStyle: {
+    backgroundColor: '#0e7490',
+  },
+  printBtnStyle: {
+    backgroundColor: '#6d28d9',
+  },
+  actionBtnLargeText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+
+  // Archive Styles
   archiveHeader: {
     padding: SPACING.gutter,
     backgroundColor: COLORS.surfaceContainerLow,
@@ -3110,86 +3243,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.secondary,
   },
-  formBottomBar: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 20,
-    marginBottom: 24,
-  },
-  actionBtnLarge: {
-    flex: 1,
-    height: 48,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    ...SHADOWS.light,
-  },
-  saveBtnStyle: {
-    backgroundColor: '#047857',
-  },
-  updateBtnStyle: {
-    backgroundColor: '#2563eb',
-  },
-  downloadBtnStyle: {
-    backgroundColor: '#0e7490',
-  },
-  printBtnStyle: {
-    backgroundColor: '#6d28d9',
-  },
-  editingBanner: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#93c5fd',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-    gap: 10,
-    ...SHADOWS.light,
-  },
-  editingBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  editingBannerTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#1e40af',
-  },
-  editingBannerSub: {
-    fontSize: 11,
-    color: '#3b82f6',
-    marginTop: 2,
-  },
-  cancelEditBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#fee2e2',
-    borderColor: '#fca5a5',
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  cancelEditBtnText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#dc2626',
-  },
-  actionBtnLargeText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 11,
-    letterSpacing: 0.5,
-  },
+
+  // Modal Dialogs
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.65)',

@@ -382,15 +382,15 @@ async function bootstrap() {
   // ── Static Web App: Admin Portal (/admin) ──────────────────────────────
   const adminWebDist = path.join(process.cwd(), 'public', 'admin');
   if (fs.existsSync(adminWebDist)) {
+    // @fastify/static auto-registers GET /admin/* internally when prefix is set.
+    // Do NOT add a manual GET /admin/* route or Fastify throws FST_ERR_DUPLICATED_ROUTE.
+    // SPA deep-link fallback is handled via setNotFoundHandler below.
     await app.register(staticFiles, {
       root: adminWebDist,
       prefix: '/admin/',
       decorateReply: false,
     });
     app.get('/admin', async (_req, reply) => {
-      return reply.sendFile('index.html', adminWebDist);
-    });
-    app.get('/admin/*', async (_req, reply) => {
       return reply.sendFile('index.html', adminWebDist);
     });
   }
@@ -406,9 +406,8 @@ async function bootstrap() {
     app.get('/driver', async (_req, reply) => {
       return reply.sendFile('index.html', driverWebDist);
     });
-    app.get('/driver/*', async (_req, reply) => {
-      return reply.sendFile('index.html', driverWebDist);
-    });
+    // NOTE: /driver/* wildcard is auto-handled by @fastify/static prefix.
+    // Do not add a manual GET /driver/* route (FST_ERR_DUPLICATED_ROUTE).
   }
 
   // ── Root API Status & App Entry ──────────────────────────────────────────
@@ -466,7 +465,12 @@ async function bootstrap() {
   });
 
   // ── 404 handler ────────────────────────────────────────────────────────────
-  app.setNotFoundHandler((_req, reply) => {
+  app.setNotFoundHandler((req, reply) => {
+    // SPA deep-link fallback: serve index.html for any unmatched /admin/* path
+    const adminDist = path.join(process.cwd(), 'public', 'admin');
+    if (req.url.startsWith('/admin/') && fs.existsSync(adminDist)) {
+      return reply.sendFile('index.html', adminDist);
+    }
     reply.code(404).send({ error: 'Not Found', message: 'The requested endpoint does not exist.' });
   });
 
